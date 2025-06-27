@@ -19,7 +19,11 @@ const logger = {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares de Segurança e Funcionalidade
+// Informa ao Express para confiar no proxy do Render.
+// Essencial para que o rate limiter identifique o IP real do usuário.
+app.set('trust proxy', 1);
+
+// --- Middlewares de Segurança e Funcionalidade ---
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
@@ -42,7 +46,6 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Configuração do Rate Limiter
-// ALTERAÇÃO: O número máximo de requisições (max) foi ajustado para 19.
 const apiLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutos
 	max: 19, // Limita cada IP a 19 requisições por janela de 15 minutos
