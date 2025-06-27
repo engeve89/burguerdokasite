@@ -139,7 +139,7 @@
             <div class="form-group">
                 <label for="input-telefone">Seu WhatsApp (apenas números)</label>
                 <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
-                <small style="color: #666;">Digite 10 ou 11 números: DDD + Telefone.</small>
+                <small style="color: #666;">Digite 11 números: DDD (2) + 9 na frente + número.</small>
             </div>
             <div class="form-actions"><button id="btn-continuar-login" class="btn-primary">Continuar</button><button onclick="fecharModalLogin()" class="btn-secondary">Voltar ao Carrinho</button></div>
         </div>
@@ -209,16 +209,15 @@
         let clienteAtual = null;
         let metodoPagamentoSelecionado = null;
         
+        const usuariosDB = [ { telefone: '5511912345678', nome: 'Cliente Teste', endereco: 'Rua da Simulação, 100, Bairro Demo', referencia: 'Em frente ao Code Park' } ];
+        
         const cardapioDB = [
-            // Burgers 180g
             { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
             { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
             { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
             { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
-            
-            // Burgers 120g
             { id: 'b12_1', nome: 'Doka Burguer 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cheese-burguer-doka.jpg', categoria: 'Burgers 120g' },
             { id: 'b12_3', nome: 'Doka Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon.avif', categoria: 'Burgers 120g' },
             { id: 'b12_4', nome: 'Doka Salada 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, alface ou rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 120g' },
@@ -226,17 +225,11 @@
             { id: 'b12_9', nome: 'Doka Classic Burguer', preco: 28.90, descricao: "Pão, 2 smash's 70g, 2 queijos cheddar, ketchup, mostarda, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-classic-burguer.jpg', categoria: 'Burgers 120g' },
             { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
             { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
-
-            // Lanches de Frango
             { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
-            
-            // Combos
             { id: 'c1', nome: 'Combo Dokinha 01', preco: 44.90, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha01.avif', categoria: 'Combos' },
             { id: 'c2', nome: 'Combo Dokinha Salada', preco: 48.60, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, cebola roxa, picles, alface, tomate, maionese + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha-salada.avif', categoria: 'Combos' },
             { id: 'c3', nome: 'Combo Catubacon', preco: 54.99, descricao: 'Pão brioche, Hambúrguer 150g, Catupiry, bacon crocante, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-catubacon.jpg', categoria: 'Combos' },
             { id: 'c4', nome: 'Combo Doka Casal Fit', preco: 69.99, descricao: '2x burguers clássicos (150g cada) + 2x Porções de batata (aprox. 100g cada) + 2x refri lata.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-doka-casal-fit.avif', categoria: 'Combos' },
-
-            // Bebidas
             { id: 'b1', nome: 'Coca-Cola Original', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-lata350ml.avif', categoria: 'Bebidas' },
             { id: 'b2', nome: 'Coca-Cola 1L', preco: 12.00, descricao: 'Garrafa 1L', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-cola-1litros.avif', categoria: 'Bebidas' },
             { id: 'b3', nome: 'Guaraná Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-guaran%C3%A1-fanta-laranja-350ml.avif', categoria: 'Bebidas' },
@@ -247,7 +240,7 @@
             { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
         ];
 
-        function carregarProdutos(categoriaSelecionada) {
+        function carregarProdutos(categoriaSelecionada = 'Burgers 180g') {
             produtosContainer.innerHTML = '';
             const produtosFiltrados = cardapioDB.filter(p => p.categoria === categoriaSelecionada);
             produtosFiltrados.forEach(produto => {
@@ -338,7 +331,7 @@
             const telefoneCru = telefoneInput.value;
             const telefoneLimpo = telefoneCru.replace(/\D/g, '');
 
-            if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+            if (telefoneLimpo.length !== 10 && telefoneLimpo.length !== 11) {
                 alert("Número incorreto! Por favor, digite 10 ou 11 números (DDD + Telefone).");
                 return;
             }
