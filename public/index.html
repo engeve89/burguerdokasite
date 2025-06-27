@@ -87,13 +87,17 @@
         .metodo-pagamento:hover, .metodo-pagamento.ativo { border-color: var(--laranja); background-color: #FFF3E0; }
         .metodo-pagamento i { font-size: 24px; margin-right: 15px; width: 30px; text-align: center; }
         .troco-container { margin-top: 10px; display: none; }
+        .troco-calculado { background-color: #FFF9E6; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
         
         .confirmacao-content { text-align: center; }
-        .confirmacao-content h2 { font-size: 28px; color: var(--marrom); }
+        .confirmacao-content h2 { font-size: 28px; color: var(--marrom); margin-bottom: 15px; }
         .confirmacao-content p { margin: 15px 0; font-size: 16px; color: #333; }
         .codigo-entrega-container { margin: 20px 0; }
-        .codigo-entrega-label { font-size: 14px; text-transform: uppercase; color: #555;}
+        .codigo-entrega-label { font-size: 14px; text-transform: uppercase; color: #555; margin-bottom: 5px; }
         .codigo-entrega { font-size: 32px; font-weight: bold; color: var(--laranja); padding: 15px; border: 2px dashed var(--laranja); border-radius: 8px; background-color: #FFF3E0; letter-spacing: 5px; display: inline-block; margin-top: 5px; }
+        .emoji-header { font-size: 60px; margin-bottom: 20px; line-height: 1; }
+        .info-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
+        .success-box { background-color: #FFF3E0; padding: 15px; border-radius: 10px; margin: 15px 0; }
     </style>
 </head>
 <body>
@@ -119,6 +123,8 @@
         <i class="fas fa-shopping-cart"></i>
         <div class="carrinho-contador">0</div>
     </button>
+    
+    <!-- Modal Carrinho -->
     <div id="modalCarrinho" class="modal">
          <div class="modal-content">
             <div class="modal-header"><h2>Meu Carrinho</h2><button onclick="fecharModalCarrinho()" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button></div>
@@ -126,13 +132,15 @@
             <div class="carrinho-footer">
                 <div class="carrinho-resumo">
                     <div><span>Subtotal</span><span id="carrinho-subtotal">R$ 0,00</span></div>
-                    <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 0,00</span></div>
+                    <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
                 </div>
                 <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
                 <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
             </div>
         </div>
     </div>
+    
+    <!-- Modal Login -->
     <div id="modalLogin" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Identificação</h2></div>
@@ -144,6 +152,8 @@
             <div class="form-actions"><button id="btn-continuar-login" class="btn-primary">Continuar</button><button onclick="fecharModalLogin()" class="btn-secondary">Voltar ao Carrinho</button></div>
         </div>
     </div>
+    
+    <!-- Modal Confirmar Dados -->
     <div id="modalConfirmarDados" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Confirme seus Dados</h2></div>
@@ -155,6 +165,8 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal Endereço -->
     <div id="modalEndereco" class="modal">
         <div class="modal-content">
              <div class="modal-header"><h2>Onde será a entrega?</h2></div>
@@ -166,24 +178,96 @@
             <div class="form-actions"><button id="btn-salvar-endereco" class="btn-primary">Salvar e Ir para Pagamento</button></div>
         </div>
     </div>
+    
+    <!-- Modal Pagamento (Atualizado) -->
     <div id="modalPagamento" class="modal">
         <div class="modal-content">
-            <div class="modal-header"><h2>Forma de Pagamento</h2></div>
-            <div class="metodo-pagamento" data-metodo="Dinheiro"><i class="fas fa-money-bill-wave"></i><div><strong>Dinheiro</strong><p style="font-size: 12px; color: #666;">Pagamento na entrega</p></div></div>
-            <div class="metodo-pagamento" data-metodo="PIX"><i class="fas fa-qrcode"></i><div><strong>PIX</strong><p style="font-size: 12px; color: #666;">Chave na entrega</p></div></div>
-            <div class="metodo-pagamento" data-metodo="Cartão"><i class="fas fa-credit-card"></i><div><strong>Cartão</strong><p style="font-size: 12px; color: #666;">Maquininha na entrega</p></div></div>
-            <div class="troco-container"><label for="troco-input">Precisa de troco para quanto?</label><input type="text" id="troco-input" class="form-group" placeholder="Ex: 50,00"></div>
-            <div class="form-actions"><button id="btn-confirmar-pagamento" class="btn-primary">Confirmar e Gerar Pedido</button><button id="btn-voltar-etapa" class="btn-secondary">Voltar</button></div>
+            <div class="modal-header"><h2>💰 Forma de Pagamento</h2></div>
+            
+            <div class="metodo-pagamento" data-metodo="Dinheiro">
+                <i class="fas fa-money-bill-wave"></i>
+                <div>
+                    <strong>Dinheiro</strong>
+                    <p style="font-size: 12px; color: #666;">Pagamento na entrega</p>
+                </div>
+            </div>
+            
+            <div class="troco-container">
+                <div style="margin-bottom: 15px; display: flex; align-items: center;">
+                    <i class="fas fa-exchange-alt" style="font-size: 20px; margin-right: 10px; color: var(--laranja);"></i>
+                    <div style="flex-grow: 1;">
+                        <label for="troco-input" style="display: block; margin-bottom: 5px; font-weight: bold;">Precisa de troco para quanto?</label>
+                        <div style="display: flex; align-items: center;">
+                            <span style="margin-right: 5px; font-weight: bold;">R$</span>
+                            <input type="number" id="troco-input" class="form-group" 
+                                   placeholder="Ex: 50,00" step="0.01" min="0"
+                                   style="flex-grow: 1; margin-bottom: 0;">
+                        </div>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Deixe em branco se não precisar de troco
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="troco-calculado" id="troco-calculado">
+                    <i class="fas fa-calculator" style="margin-right: 5px;"></i>
+                    <span id="valor-troco-texto"></span>
+                </div>
+            </div>
+            
+            <div class="metodo-pagamento" data-metodo="PIX">
+                <i class="fas fa-qrcode"></i>
+                <div>
+                    <strong>PIX</strong>
+                    <p style="font-size: 12px; color: #666;">Chave na entrega</p>
+                </div>
+            </div>
+            
+            <div class="metodo-pagamento" data-metodo="Cartão">
+                <i class="fas fa-credit-card"></i>
+                <div>
+                    <strong>Cartão</strong>
+                    <p style="font-size: 12px; color: #666;">Maquininha na entrega</p>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button id="btn-confirmar-pagamento" class="btn-primary">✅ Confirmar e Gerar Pedido</button>
+                <button id="btn-voltar-etapa" class="btn-secondary">↩️ Voltar</button>
+            </div>
         </div>
     </div>
+    
+    <!-- Modal Confirmação (Atualizado) -->
     <div id="modalConfirmacao" class="modal">
         <div class="modal-content confirmacao-content">
-            <h2>Pedido a Caminho! 🛵</h2>
-            <p>Obrigado, <strong id="nome-cliente-confirmacao"></strong>! Seu pedido foi enviado para a cozinha.</p>
-            <p>Nº do Pedido: <strong id="numero-pedido"></strong></p>
-            <div class="codigo-entrega-container"><div class="codigo-entrega-label">Seu Código de Entrega</div><div id="codigo-entrega" class="codigo-entrega"></div></div>
-            <p style="font-size: 14px;">Você receberá uma confirmação no seu WhatsApp em instantes.</p>
-            <button onclick="fecharModalConfirmacao()" class="btn-primary" style="margin-top: 10px;">Fazer Novo Pedido</button>
+            <div class="emoji-header">🍔🎉🚀</div>
+            <h2>Pedido Confirmado! 🛵</h2>
+            
+            <div class="success-box">
+                <p style="margin-bottom: 10px;">Obrigado, <strong id="nome-cliente-confirmacao" style="color: var(--laranja);"></strong>!</p>
+                <p>Seu pedido foi enviado para a cozinha e já está sendo preparado com carinho! 👨‍🍳🔥</p>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>📋 Nº do Pedido:</strong> <span id="numero-pedido" style="font-weight: bold; color: var(--marrom);"></span></p>
+                <p><strong>⏱ Tempo estimado:</strong> 40-50 minutos</p>
+                <p><strong>📱 Você receberá:</strong> Atualizações por WhatsApp</p>
+            </div>
+            
+            <div class="codigo-entrega-container">
+                <div class="codigo-entrega-label">🔑 Seu Código de Entrega</div>
+                <div id="codigo-entrega" class="codigo-entrega"></div>
+                <small style="display: block; margin-top: 5px; color: #666;">Mostre este código ao entregador</small>
+            </div>
+            
+            <div style="margin-top: 25px; font-size: 14px; color: #666;">
+                <p>🍟 Seu lanche está a caminho! Agradecemos pela preferência! ❤️</p>
+            </div>
+            
+            <button id="btn-novo-pedido" class="btn-primary" style="margin-top: 20px;">
+                🍔 Fazer Novo Pedido
+            </button>
         </div>
     </div>
 
@@ -204,6 +288,7 @@
         const carrinhoSubtotal = document.getElementById('carrinho-subtotal');
         const carrinhoTaxaEntrega = document.getElementById('carrinho-taxa-entrega');
         const carrinhoTotalValor = document.getElementById('carrinho-total-valor');
+        const btnNovoPedido = document.getElementById('btn-novo-pedido');
 
         let carrinho = [];
         let clienteAtual = null;
@@ -294,7 +379,7 @@
                 carrinhoItensContainer.innerHTML = '<p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>';
                 document.getElementById('btn-finalizar-pedido').style.display = 'none';
                 carrinhoSubtotal.textContent = "R$ 0,00";
-                carrinhoTaxaEntrega.textContent = "R$ 0,00";
+                carrinhoTaxaEntrega.textContent = "R$ 5,00";
                 carrinhoTotalValor.textContent = "R$ 0,00";
             } else {
                 document.getElementById('btn-finalizar-pedido').style.display = 'block';
@@ -386,12 +471,39 @@
             abrirModalPagamento();
         }
         
+        function calcularTotalPedido() {
+            const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+            return subtotal + TAXA_ENTREGA;
+        }
+
         async function finalizarPedidoComPagamento() {
-            if (!metodoPagamentoSelecionado) { alert("Por favor, selecione uma forma de pagamento."); return; }
+            if (!metodoPagamentoSelecionado) { 
+                alert("Por favor, selecione uma forma de pagamento."); 
+                return; 
+            }
+            
+            // Validação do troco se for pagamento em dinheiro
+            if (metodoPagamentoSelecionado === 'Dinheiro') {
+                const trocoInput = document.getElementById('troco-input');
+                const valorPedido = calcularTotalPedido();
+                
+                if (trocoInput.value && parseFloat(trocoInput.value) <= valorPedido) {
+                    alert("O valor para troco deve ser maior que o total do pedido!");
+                    return;
+                }
+            }
+            
             const btnConfirmar = document.getElementById('btn-confirmar-pagamento');
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-            const dadosDoPedido = { carrinho: carrinho, cliente: clienteAtual, pagamento: metodoPagamentoSelecionado, troco: document.getElementById('troco-input').value || null };
+            
+            const dadosDoPedido = { 
+                carrinho: carrinho, 
+                cliente: clienteAtual, 
+                pagamento: metodoPagamentoSelecionado, 
+                troco: metodoPagamentoSelecionado === 'Dinheiro' ? document.getElementById('troco-input').value || null : null 
+            };
+            
             try {
                 const response = await fetch('/api/criar-pedido', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosDoPedido) });
                 const result = await response.json();
@@ -403,13 +515,15 @@
                     document.getElementById('codigo-entrega').textContent = codigoEntrega;
                     fecharModalPagamento();
                     modalConfirmacao.style.display = 'flex';
-                } else { alert(`Erro ao enviar o pedido: ${result.message}`); }
+                } else { 
+                    alert(`Erro ao enviar o pedido: ${result.message}`); 
+                }
             } catch (error) {
                 console.error("Erro de rede:", error);
                 alert("Não foi possível conectar ao nosso servidor. Verifique sua conexão e tente novamente.");
             } finally {
                 btnConfirmar.disabled = false;
-                btnConfirmar.textContent = 'Confirmar e Gerar Pedido';
+                btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
             }
         }
 
@@ -421,39 +535,117 @@
             document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
             document.querySelector('.troco-container').style.display = 'none';
             document.getElementById('troco-input').value = '';
+            document.getElementById('troco-calculado').style.display = 'none';
             document.getElementById('input-telefone').value = '';
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
+            carregarProdutos('Burgers 180g');
         }
 
         function inicializar() {
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
+            
+            // Event listeners para troco
+            document.getElementById('troco-input').addEventListener('input', function() {
+                const trocoInput = parseFloat(this.value);
+                const valorPedido = calcularTotalPedido();
+                const trocoCalculado = document.getElementById('troco-calculado');
+                
+                if (trocoInput && !isNaN(trocoInput)) {
+                    if (trocoInput > valorPedido) {
+                        const trocoValor = trocoInput - valorPedido;
+                        document.getElementById('valor-troco-texto').textContent = 
+                            `Troco: R$ ${trocoValor.toFixed(2).replace('.', ',')}`;
+                        trocoCalculado.style.display = 'block';
+                    } else {
+                        trocoCalculado.style.display = 'none';
+                    }
+                } else {
+                    trocoCalculado.style.display = 'none';
+                }
+            });
+
+            // Outros event listeners
+            const menuCategorias = document.querySelector('.menu-categorias');
+            document.getElementById('btn-scroll-left').addEventListener('click', () => { menuCategorias.scrollLeft -= 150; });
+            document.getElementById('btn-scroll-right').addEventListener('click', () => { menuCategorias.scrollLeft += 150; });
+
+            botoesCategoria.forEach(botao => { 
+                botao.addEventListener('click', () => { 
+                    botoesCategoria.forEach(btn => btn.classList.remove('ativo')); 
+                    botao.classList.add('ativo'); 
+                    carregarProdutos(botao.dataset.categoria); 
+                }); 
+            });
+            
+            produtosContainer.addEventListener('click', (event) => { 
+                const addBtn = event.target.closest('.add-btn'); 
+                if (addBtn) { 
+                    adicionarAoCarrinho(addBtn.dataset.id); 
+                    addBtn.innerHTML = '<i class="fas fa-check"></i>'; 
+                    addBtn.style.background = 'var(--verde)'; 
+                    setTimeout(() => { 
+                        addBtn.innerHTML = '+'; 
+                        addBtn.style.background = 'var(--laranja)'; 
+                    }, 1000); 
+                } 
+            });
+            
+            document.querySelector('.carrinho-btn').addEventListener('click', () => { 
+                if(carrinho.length === 0) { 
+                    alert('Seu carrinho está vazio!'); 
+                    return; 
+                } 
+                abrirModalCarrinho(); 
+            });
+            
+            carrinhoItensContainer.addEventListener('input', (event) => { 
+                if (event.target.classList.contains('obs-input')) { 
+                    const itemId = event.target.dataset.id; 
+                    const observacaoText = event.target.value; 
+                    const itemNoCarrinho = carrinho.find(item => item.id === itemId); 
+                    if (itemNoCarrinho) { 
+                        itemNoCarrinho.observacao = observacaoText; 
+                    } 
+                } 
+            });
+            
+            document.getElementById('btn-finalizar-pedido').addEventListener('click', abrirModalLogin);
+            document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
+            document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
+            document.getElementById('btn-confirmar-pagamento').addEventListener('click', finalizarPedidoComPagamento);
+            document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
+            document.getElementById('btn-novo-pedido').addEventListener('click', fecharModalConfirmacao);
+            
+            document.querySelectorAll('.metodo-pagamento').forEach(metodo => { 
+                metodo.addEventListener('click', () => { 
+                    document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo')); 
+                    metodo.classList.add('ativo'); 
+                    metodoPagamentoSelecionado = metodo.dataset.metodo; 
+                    
+                    const trocoContainer = document.querySelector('.troco-container');
+                    if (metodoPagamentoSelecionado === 'Dinheiro') {
+                        trocoContainer.style.display = 'block';
+                        document.getElementById('troco-input').focus();
+                    } else {
+                        trocoContainer.style.display = 'none';
+                        document.getElementById('troco-calculado').style.display = 'none';
+                    }
+                }); 
+            });
+            
+            document.getElementById('btn-dados-corretos').addEventListener('click', abrirModalPagamento);
+            document.getElementById('btn-editar-dados').addEventListener('click', () => {
+                fecharModalConfirmarDados();
+                abrirModalEndereco();
+                document.getElementById('input-nome').value = clienteAtual.nome;
+                document.getElementById('input-endereco').value = clienteAtual.endereco;
+                document.getElementById('input-referencia').value = clienteAtual.referencia || '';
+            });
         }
+
         inicializar();
-
-        const menuCategorias = document.querySelector('.menu-categorias');
-        document.getElementById('btn-scroll-left').addEventListener('click', () => { menuCategorias.scrollLeft -= 150; });
-        document.getElementById('btn-scroll-right').addEventListener('click', () => { menuCategorias.scrollLeft += 150; });
-
-        botoesCategoria.forEach(botao => { botao.addEventListener('click', () => { botoesCategoria.forEach(btn => btn.classList.remove('ativo')); botao.classList.add('ativo'); carregarProdutos(botao.dataset.categoria); }); });
-        produtosContainer.addEventListener('click', (event) => { const addBtn = event.target.closest('.add-btn'); if (addBtn) { adicionarAoCarrinho(addBtn.dataset.id); addBtn.innerHTML = '<i class="fas fa-check"></i>'; addBtn.style.background = 'var(--verde)'; setTimeout(() => { addBtn.innerHTML = '+'; addBtn.style.background = 'var(--laranja)'; }, 1000); } });
-        document.querySelector('.carrinho-btn').addEventListener('click', () => { if(carrinho.length === 0) { alert('Seu carrinho está vazio!'); return; } abrirModalCarrinho(); });
-        carrinhoItensContainer.addEventListener('input', (event) => { if (event.target.classList.contains('obs-input')) { const itemId = event.target.dataset.id; const observacaoText = event.target.value; const itemNoCarrinho = carrinho.find(item => item.id === itemId); if (itemNoCarrinho) { itemNoCarrinho.observacao = observacaoText; } } });
-        document.getElementById('btn-finalizar-pedido').addEventListener('click', abrirModalLogin);
-        document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
-        document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
-        document.getElementById('btn-confirmar-pagamento').addEventListener('click', finalizarPedidoComPagamento);
-        document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
-        document.querySelectorAll('.metodo-pagamento').forEach(metodo => { metodo.addEventListener('click', () => { document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo')); metodo.classList.add('ativo'); metodoPagamentoSelecionado = metodo.dataset.metodo; document.querySelector('.troco-container').style.display = (metodoPagamentoSelecionado === 'Dinheiro') ? 'block' : 'none'; }); });
-        document.getElementById('btn-dados-corretos').addEventListener('click', abrirModalPagamento);
-        document.getElementById('btn-editar-dados').addEventListener('click', () => {
-            fecharModalConfirmarDados();
-            abrirModalEndereco();
-            document.getElementById('input-nome').value = clienteAtual.nome;
-            document.getElementById('input-endereco').value = clienteAtual.endereco;
-            document.getElementById('input-referencia').value = clienteAtual.referencia || '';
-        });
     </script>
 </body>
 </html>
