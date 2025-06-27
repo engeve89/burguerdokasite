@@ -1,0 +1,18 @@
+{
+  "name": "bot-dokaburger",
+  "version": "1.0.0",
+  "description": "Bot de automação de pedidos para DokaBurger",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Helder",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.23.0"
+  }
+}
