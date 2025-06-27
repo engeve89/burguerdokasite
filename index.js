@@ -19,20 +19,17 @@ const logger = {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- Middlewares de Segurança e Funcionalidade ---
-
-// CORREÇÃO: Configurando o Helmet para permitir os recursos do seu site.
-// Isso diz ao navegador que é seguro carregar imagens e fontes de outros domínios.
+// Middlewares de Segurança e Funcionalidade
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Permite scripts do mesmo domínio e scripts inline (dentro do HTML)
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"], // Permite CSS do mesmo domínio, inline e do Cloudflare (Font-Awesome)
-      imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"], // Permite imagens do mesmo domínio, de dados e dos seus provedores de imagens
-      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"], // Permite fontes do mesmo domínio e do Cloudflare (Font-Awesome)
-      connectSrc: ["'self'"], // Permite conexões (API calls) para o seu próprio domínio
-      frameSrc: ["'none'"], // Não permite iframes
+      scriptSrc: ["'self'", "'unsafe-inline'"], 
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
     },
@@ -45,9 +42,10 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Configuração do Rate Limiter
+// ALTERAÇÃO: O número máximo de requisições (max) foi ajustado para 19.
 const apiLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000,
-	max: 100, 
+	windowMs: 15 * 60 * 1000, // 15 minutos
+	max: 19, // Limita cada IP a 19 requisições por janela de 15 minutos
 	standardHeaders: true,
 	legacyHeaders: false,
     message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
