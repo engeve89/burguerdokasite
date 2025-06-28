@@ -527,7 +527,15 @@
         function fecharModalCarrinho() { modalCarrinho.style.display = 'none'; }
         function abrirModalLogin() { fecharModalCarrinho(); modalLogin.style.display = 'flex'; document.getElementById('input-telefone').focus(); }
         function fecharModalLogin() { modalLogin.style.display = 'none'; abrirModalCarrinho(); }
-        function abrirModalEndereco() { fecharModalLogin(); fecharModalConfirmarDados(); modalEndereco.style.display = 'flex'; document.getElementById('input-contato-endereco').value = clienteAtual.telefoneFormatado; document.getElementById('input-nome').focus(); }
+        async function abrirModalEndereco() {
+            fecharModalLogin();
+            fecharModalConfirmarDados();
+            modalEndereco.style.display = 'flex';
+            // Acessa o valor bruto do telefone do objeto clienteAtual
+            const telefoneBruto = clienteAtual.telefone || ''; 
+            document.getElementById('input-contato-endereco').value = telefoneBruto;
+            document.getElementById('input-nome').focus();
+        }
         function fecharModalEndereco() { modalEndereco.style.display = 'none'; }
         function abrirModalPagamento() { fecharModalLogin(); fecharModalEndereco(); fecharModalConfirmarDados(); modalPagamento.style.display = 'flex'; }
         function fecharModalPagamento() { modalPagamento.style.display = 'none'; }
@@ -557,32 +565,28 @@
             btnContinuar.disabled = true;
             btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
-            // ATENÇÃO: A lógica de verificação agora deve chamar a API do backend.
-            // A lógica antiga com localStorage será mantida como fallback, mas a primária será a API.
             try {
-                // Supondo que o backend esteja rodando no mesmo domínio/porta, ou com CORS configurado
-                // const response = await fetch('/api/identificar-cliente', {
-                //    method: 'POST',
-                //    headers: { 'Content-Type': 'application/json' },
-                //    body: JSON.stringify({ telefone: telefoneLimpo })
-                // });
-                // const data = await response.json();
-                // if (!response.ok) {
-                //    throw new Error(data.message || 'Erro ao verificar telefone.');
-                // }
+                const response = await fetch('/api/identificar-cliente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telefone: telefoneLimpo })
+                });
                 
-                // --- Simulação da lógica que será substituída pela API ---
-                setTimeout(() => {
-                    clienteAtual = { telefone: telefoneLimpo, telefoneFormatado: telefoneCru };
-                    const dadosSalvos = localStorage.getItem(telefoneLimpo); // Simula busca no DB
-                    if (!dadosSalvos) { // data.isNew === true
-                        abrirModalEndereco();
-                    } else { // data.isNew === false
-                        clienteAtual = { ...clienteAtual, ...JSON.parse(dadosSalvos) }; // clienteAtual = data.cliente
-                        abrirModalConfirmarDados(clienteAtual);
-                    }
-                }, 1000);
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Erro ao verificar telefone.');
+                }
+                
+                // Armazena o telefone bruto para exibição, mas a lógica usa o normalizado
+                clienteAtual = data.cliente;
+                clienteAtual.telefone = telefoneCru; // Mantém o telefone com a máscara para exibição
 
+                if (data.isNew) {
+                    abrirModalEndereco();
+                } else {
+                    abrirModalConfirmarDados(clienteAtual);
+                }
             } catch (error) {
                 alert(error.message);
             } finally {
@@ -598,8 +602,6 @@
             clienteAtual.nome = nome;
             clienteAtual.endereco = endereco;
             clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
-            // Salvar no localStorage (será substituído pela chamada à API /criar-pedido)
-            localStorage.setItem(clienteAtual.telefone, JSON.stringify({ nome: clienteAtual.nome, endereco: clienteAtual.endereco, referencia: clienteAtual.referencia }));
             abrirModalPagamento();
         }
         
@@ -608,54 +610,78 @@
             return subtotal + TAXA_ENTREGA;
         }
 
+        // =================================================================================
+        // FUNÇÃO ATUALIZADA - O CÓDIGO ANTIGO FOI TOTALMENTE SUBSTITUÍDO POR ESTE
+        // =================================================================================
         async function finalizarPedidoComPagamento() {
-            if (!metodoPagamentoSelecionado) { 
-                alert("Por favor, selecione uma forma de pagamento."); 
-                return; 
+            if (!metodoPagamentoSelecionado) {
+                alert("Por favor, selecione uma forma de pagamento.");
+                return;
             }
-            
+
             if (metodoPagamentoSelecionado === 'Dinheiro') {
                 const trocoInput = document.getElementById('troco-input');
                 const valorPedido = calcularTotalPedido();
-                
-                if (trocoInput.value && parseFloat(trocoInput.value) <= valorPedido) {
+                if (trocoInput.value && parseFloat(trocoInput.value.replace(',', '.')) <= valorPedido) {
                     alert("O valor para troco deve ser maior que o total do pedido!");
                     return;
                 }
             }
-            
+
             const btnConfirmar = document.getElementById('btn-confirmar-pagamento');
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-            
-            // ATENÇÃO: Lógica para enviar o pedido para a API do backend
-            // const pedido = {
-            //    cliente: clienteAtual,
-            //    carrinho: carrinho,
-            //    pagamento: metodoPagamentoSelecionado,
-            //    troco: document.getElementById('troco-input').value || null
-            // };
-            // try {
-            //    const response = await fetch('/api/criar-pedido', { ... });
-            //    const data = await response.json();
-            // } ...
-            
-            setTimeout(() => {
-                const numeroPedido = `WEB-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            // Objeto do pedido que será enviado para a API
+            const pedido = {
+                cliente: clienteAtual,
+                carrinho: carrinho.map(item => ({
+                    nome: item.nome,
+                    preco: item.preco,
+                    quantidade: item.quantidade,
+                    observacao: item.observacao || ""
+                })),
+                pagamento: metodoPagamentoSelecionado,
+                troco: document.getElementById('troco-input').value.replace('.', ',') || null
+            };
+
+            try {
+                // A CHAMADA REAL PARA A API, AGORA ATIVA
+                const response = await fetch('/api/criar-pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pedido)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Falha ao criar o pedido. Tente novamente.');
+                }
+
+                // Usando o ID real retornado pelo servidor
+                const numeroPedido = data.pedidoId;
                 const codigoEntrega = clienteAtual.telefone.slice(-4);
+
                 document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
-                document.getElementById('numero-pedido').textContent = numeroPedido;
+                document.getElementById('numero-pedido').textContent = `#${numeroPedido}`;
                 document.getElementById('codigo-entrega').textContent = codigoEntrega;
-                
+
                 fecharModalPagamento();
                 modalConfirmacao.style.display = 'flex';
-                
                 gerenciarBotoesScrollModal();
 
+            } catch (error) {
+                alert(`Ocorreu um erro: ${error.message}`);
+            } finally {
                 btnConfirmar.disabled = false;
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
-            }, 1500);
+            }
         }
+        // =================================================================================
+        // FIM DA FUNÇÃO ATUALIZADA
+        // =================================================================================
+
 
         function fecharModalConfirmacao() {
             modalConfirmacao.style.display = 'none';
@@ -669,7 +695,11 @@
             // Não limpar o telefone, pois o cliente ainda está "logado"
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
-            carregarProdutos('Burgers 180g');
+            // Volta para a categoria principal
+            const categoriaPrincipal = botoesCategoria[0];
+            botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
+            categoriaPrincipal.classList.add('ativo');
+            carregarProdutos(categoriaPrincipal.dataset.categoria);
         }
 
         function gerenciarBotoesScrollModal() {
