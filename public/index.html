@@ -52,16 +52,7 @@
         .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s; display: flex; flex-direction: column; max-height: 80vh; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
         
-        .btn-fechar-modal {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
+        /* .btn-fechar-modal foi removido pois o elemento não existe mais */
         
         #carrinho-itens { overflow-y: auto; flex-grow: 1; padding-right: 10px; }
         .carrinho-item { display: flex; flex-direction: column; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
@@ -92,6 +83,9 @@
         .btn-primary { background: var(--laranja); color: var(--branco); margin-bottom: 8px; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%;}
         .btn-secondary { background: var(--cinza); color: var(--marrom); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
         
+        /* ALTERAÇÃO: Adicionado estilo para o novo botão verde */
+        .btn-success { background: var(--verde); color: var(--branco); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
+
         #dados-confirmacao p { margin-bottom: 10px; background-color: #fafafa; padding: 10px; border-radius: 5px; text-align: left; }
         #dados-confirmacao p strong { color: var(--marrom); }
 
@@ -140,7 +134,7 @@
          <div class="modal-content">
              <div class="modal-header">
                  <h2>Meu Carrinho</h2>
-                 <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
+                 </div>
              <div id="carrinho-itens"></div>
              <div class="carrinho-footer">
                  <div class="carrinho-resumo">
@@ -157,7 +151,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Identificação</h2>
-                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
+                </div>
             <div class="form-group">
                 <label for="input-telefone">Seu WhatsApp (apenas números)</label>
                 <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
@@ -171,7 +165,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Confirme seus Dados</h2>
-                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
+                </div>
             <p>Olá de novo! Encontramos seu cadastro. Os dados abaixo estão corretos?</p>
             <div id="dados-confirmacao"></div>
             <div class="form-actions">
@@ -185,7 +179,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Onde será a entrega?</h2>
-                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
+                </div>
             <p style="margin-bottom: 15px; font-size: 14px; color: #666;">Como é sua primeira vez (ou você pediu para editar), precisamos do seu endereço.</p>
             <div class="form-group"><label>Contato (WhatsApp)</label><input type="tel" id="input-contato-endereco" readonly></div>
              <div class="form-group"><label for="input-nome">Nome Completo</label><input type="text" id="input-nome" placeholder="Seu nome completo"></div>
@@ -199,7 +193,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>💰 Forma de Pagamento</h2>
-                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
+                </div>
             
             <div class="metodo-pagamento" data-metodo="Dinheiro">
                 <i class="fas fa-money-bill-wave"></i>
@@ -257,7 +251,6 @@
     
     <div id="modalConfirmacao" class="modal">
         <div class="modal-content confirmacao-content">
-            <button class="btn-fechar-modal" onclick="fecharModalConfirmacao()">&times;</button>
             <div class="emoji-header">🍔🎉🚀</div>
             <h2>Pedido Confirmado! 🛵</h2>
             
@@ -282,14 +275,15 @@
                 <p>🍟 Seu lanche está a caminho! Agradecemos pela preferência! ❤️</p>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button id="btn-novo-pedido" class="btn-primary" style="flex: 1;">
+            <div class="form-actions" style="margin-top: 20px;">
+                <button id="btn-novo-pedido" class="btn-primary">
                     🍔 Fazer Novo Pedido
                 </button>
-                <button onclick="fecharModalConfirmacao()" class="btn-secondary" style="flex: 1;">
-                    ↩️ Voltar ao Site
+                <button onclick="voltarAoSite()" class="btn-success">
+                    ✅ Voltar ao Início
                 </button>
             </div>
+
         </div>
     </div>
 
@@ -428,10 +422,13 @@
             modalCarrinho.style.display = 'none'; 
         }
 
-        // FUNÇÃO ADICIONADA: Unifica o fechamento de todos os modais para voltar ao menu
+        // ALTERAÇÃO: Função para fechar todos os modais (usada ao clicar fora)
         function fecharTodosOsModais() {
             document.querySelectorAll('.modal').forEach(modal => {
-                modal.style.display = 'none';
+                // Não fecha o modal de confirmação final com esta função
+                if (modal.id !== 'modalConfirmacao') {
+                    modal.style.display = 'none';
+                }
             });
         }
 
@@ -456,7 +453,6 @@
 
         function fecharModalEndereco() { 
             modalEndereco.style.display = 'none'; 
-            // Se veio da confirmação de dados, volta pra lá
             if (clienteAtual && clienteAtual.endereco) {
                 abrirModalConfirmarDados(clienteAtual);
             } else {
@@ -473,7 +469,6 @@
 
         function fecharModalPagamento() { 
             modalPagamento.style.display = 'none'; 
-            // Volta para a tela apropriada baseada no estado
             if (document.getElementById('input-nome').value) {
                 abrirModalEndereco();
             } else if (clienteAtual && clienteAtual.endereco) {
@@ -563,7 +558,6 @@
                 return; 
             }
             
-            // Validação do troco se for pagamento em dinheiro
             if (metodoPagamentoSelecionado === 'Dinheiro') {
                 const trocoInput = document.getElementById('troco-input');
                 const valorPedido = calcularTotalPedido();
@@ -594,7 +588,7 @@
                     document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
                     document.getElementById('numero-pedido').textContent = numeroPedido;
                     document.getElementById('codigo-entrega').textContent = codigoEntrega;
-                    fecharModalPagamento();
+                    fecharTodosOsModais(); // Fecha todos os modais abertos
                     modalConfirmacao.style.display = 'flex';
                 } else { 
                     alert(`Erro ao enviar o pedido: ${result.message}`); 
@@ -632,7 +626,16 @@
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
             
-            // Event listeners para troco
+            // ALTERAÇÃO: Adiciona evento para fechar modal ao clicar fora
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (event) => {
+                    // Verifica se o clique foi no fundo do modal (o próprio elemento .modal)
+                    if (event.target === modal) {
+                        fecharTodosOsModais();
+                    }
+                });
+            });
+            
             document.getElementById('troco-input').addEventListener('input', function() {
                 const trocoInput = parseFloat(this.value);
                 const valorPedido = calcularTotalPedido();
@@ -652,7 +655,6 @@
                 }
             });
 
-            // Outros event listeners
             const menuCategorias = document.querySelector('.menu-categorias');
             document.getElementById('btn-scroll-left').addEventListener('click', () => { menuCategorias.scrollLeft -= 150; });
             document.getElementById('btn-scroll-right').addEventListener('click', () => { menuCategorias.scrollLeft += 150; });
@@ -705,7 +707,6 @@
                 fecharModalPagamento();
             };
             document.getElementById('btn-novo-pedido').addEventListener('click', fecharModalConfirmacao);
-            document.querySelector('#modalConfirmacao .btn-secondary').addEventListener('click', voltarAoSite);
             
             document.querySelectorAll('.metodo-pagamento').forEach(metodo => { 
                 metodo.addEventListener('click', () => { 
