@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client } = require('whatsapp-web.js');
 const fs = require('fs');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -19,6 +19,8 @@ const logger = {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Informa ao Express para confiar no proxy do Render.
+// Essencial para que o rate limiter identifique o IP real do usuário.
 app.set('trust proxy', 1);
 
 // --- Middlewares de Segurança e Funcionalidade ---
@@ -26,7 +28,7 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], 
+      scriptSrc: ["'self'", "'unsafe-inline'"], 
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
       imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
@@ -43,9 +45,10 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Configuração do Rate Limiter
 const apiLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000,
-	max: 100,
+	windowMs: 15 * 60 * 1000, // 15 minutos
+	max: 19, // Limita cada IP a 19 requisições por janela de 15 minutos
 	standardHeaders: true,
 	legacyHeaders: false,
     message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
@@ -59,12 +62,10 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false
   },
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 30000,
-  max: 5
+  connectionTimeoutMillis: 5000
 });
 
-// --- Função para criar a tabela de clientes ---
+// --- Função para criar a tabela de clientes se ela não existir ---
 async function setupDatabase() {
     let clientDB;
     try {
@@ -78,86 +79,40 @@ async function setupDatabase() {
                 criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        logger.info('✅ Tabela "clientes" verificada/criada com sucesso no banco de dados.');
+        logger.info('Tabela "clientes" verificada/criada com sucesso no banco de dados.');
     } catch (err) {
-        logger.error('❌ Erro ao configurar o banco de dados:', err);
-        throw err;
+        logger.error('Erro ao criar a tabela de clientes:', err);
     } finally {
         if (clientDB) clientDB.release();
     }
 }
 
-// Lógica de WhatsApp estável
-let client;
+// --- Estado do Cliente WhatsApp ---
 let whatsappStatus = 'initializing';
-let isInitializing = false;
 
-async function initializeWhatsApp() {
-    if (isInitializing) return;
-    isInitializing = true;
-    whatsappStatus = 'initializing';
-    logger.info('Iniciando processo de inicialização do WhatsApp...');
+// Inicialização do cliente WhatsApp
+const client = new Client({
+  puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    headless: true
+  },
+  session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
+});
 
-    try {
-        if (client) {
-            await client.destroy();
-            client = null;
-        }
-
-        client = new Client({
-            authStrategy: new LocalAuth({ dataPath: './whatsapp-sessions' }),
-            puppeteer: {
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process', '--disable-gpu'],
-                headless: true,
-                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
-            },
-            webVersionCache: {
-                type: 'remote',
-                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
-            }
-        });
-
-        client.on('qr', qr => {
-            whatsappStatus = 'qr_pending';
-            logger.info('Gerando QR Code...');
-            qrcode.generate(qr, { small: true });
-            const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
-            logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
-        });
-
-        client.on('ready', () => {
-            whatsappStatus = 'ready';
-            logger.info('✅ Cliente WhatsApp pronto para uso!');
-        });
-
-        client.on('disconnected', (reason) => {
-            whatsappStatus = 'disconnected';
-            logger.error(`WhatsApp desconectado: ${reason}. Tentando reconectar...`);
-            setTimeout(initializeWhatsApp, 20000);
-        });
-
-        await client.initialize();
-    } catch (err) {
-        logger.error(`Falha grave durante a inicialização do WhatsApp: ${err}`);
-        setTimeout(initializeWhatsApp, 30000);
-    } finally {
-        isInitializing = false;
-    }
-}
-
-// --- Funções Auxiliares ---
+// --- Funções Auxiliares Completas ---
 function normalizarTelefone(telefone) {
     if (typeof telefone !== 'string') return null;
     let limpo = telefone.replace(/\D/g, '');
     if (limpo.startsWith('55')) { limpo = limpo.substring(2); }
     if (limpo.length < 10 || limpo.length > 11) return null;
-    return `55${limpo}`;
+    const ddd = limpo.substring(0, 2);
+    let numeroBase = limpo.substring(2);
+    if (numeroBase.length === 9 && numeroBase.startsWith('9')) {
+        numeroBase = numeroBase.substring(1);
+    }
+    if (numeroBase.length !== 8) return null;
+    return `55${ddd}${numeroBase}`;
 }
-
-const cleanInput = (input) => {
-    if (typeof input !== 'string' || !input) return null;
-    return input.replace(/\s+/g, ' ').trim();
-};
 
 function gerarCupomFiscal(pedido) {
     const { cliente, carrinho, pagamento, troco } = pedido;
@@ -165,48 +120,85 @@ function gerarCupomFiscal(pedido) {
     const taxaEntrega = 5.00;
     const total = subtotal + taxaEntrega;
     const now = new Date();
-    const options = { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-    const formatter = new Intl.DateTimeFormat('pt-BR', options);
-    const [dataLocal, horaLocal] = formatter.format(now).split(', ');
-
-    let cupom = `================================\n`;
-    cupom += `      Doka Burger - Pedido\n`;
-    cupom += `   ${dataLocal} às ${horaLocal}\n`;
-    cupom += `================================\n`;
+    let cupom = `==================================================\n`;
+    cupom += `      Doka Burger - Pedido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n`;
+    cupom += `==================================================\n`
     cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
-    cupom += `*ITENS DO PEDIDO:*\n`;
+    cupom += `*ITENS:*\n`;
     carrinho.forEach(item => {
-        const nomeFormatado = item.nome.padEnd(20, ' ');
+        const nomeFormatado = item.nome.padEnd(25, ' ');
         const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
         cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
-        const obsLimpa = cleanInput(item.observacao);
-        if (obsLimpa) cupom += `  Obs: ${obsLimpa}\n`;
+        if (item.observacao) { cupom += `  Obs: ${item.observacao}\n`; }
     });
-    cupom += `------------------------------------------------\n`;
-    cupom += `Subtotal:      R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-    cupom += `Taxa de Entrega: R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
+    cupom += `--------------------------------------------------\n`;
+    cupom += `Subtotal:         R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    cupom += `Taxa de Entrega:  R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
     cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
-    cupom += `------------------------------------------------\n`;
-    cupom += `*ENDEREÇO DE ENTREGA:*\n${cleanInput(cliente.endereco)}\n`;
-    const refLimpa = cleanInput(cliente.referencia);
-    if (refLimpa) cupom += `Ref: ${refLimpa}\n`;
-    cupom += `------------------------------------------------\n`;
+    cupom += `--------------------------------------------------\n`;
+    cupom += `*ENDEREÇO:*\n${cliente.endereco}\n`;
+    if (cliente.referencia) { cupom += `Ref: ${cliente.referencia}\n`; }
+    cupom += `--------------------------------------------------\n`;
     cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
     if (pagamento === 'Dinheiro' && troco) {
         cupom += `Troco para: R$ ${troco}\n`;
     }
-    cupom += `================================\n`;
-    cupom += `      OBRIGADO PELA PREFERÊNCIA!`;
+    cupom += `==================================================\n`;
+    cupom += `             OBRIGADO PELA PREFERENCIA!`;
     return cupom;
 }
 
+// --- Eventos do WhatsApp ---
+client.on('qr', qr => {
+    logger.info('Gerando QR Code...');
+    qrcode.generate(qr, { small: true });
+    const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+    logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
+});
+
+client.on('authenticated', (session) => {
+    logger.info('Sessão autenticada! Salvando...');
+    if (session) { fs.writeFileSync('./session.json', JSON.stringify(session)); }
+});
+
+client.on('auth_failure', msg => {
+    logger.error(`FALHA NA AUTENTICAÇÃO: ${msg}. Removendo sessão...`);
+    if (fs.existsSync('./session.json')) { fs.unlinkSync('./session.json'); }
+    whatsappStatus = 'disconnected';
+});
+
+client.on('ready', () => { 
+    whatsappStatus = 'ready';
+    logger.info('✅ 🤖 Cliente WhatsApp conectado e pronto para automação!');
+});
+
+client.on('disconnected', (reason) => { 
+    whatsappStatus = 'disconnected'; 
+    logger.error(`WhatsApp desconectado: ${reason}`); 
+});
+
+client.initialize().catch(err => {
+  logger.error(`Falha crítica ao inicializar o cliente: ${err}`);
+  if (fs.existsSync('./session.json')) {
+    logger.info('Tentando remover arquivo de sessão corrompido...');
+    fs.unlinkSync('./session.json');
+  }
+});
+
+
 // --- Rotas da API ---
+
 app.get('/health', (req, res) => {
     res.json({
         whatsapp: whatsappStatus,
-        database: pool.totalCount > 0 ? 'connected' : 'disconnected',
+        database_connections: pool.totalCount,
         uptime_seconds: process.uptime()
     });
+});
+
+app.get('/ping', (req, res) => {
+    logger.info('Ping recebido!');
+    res.status(200).json({ message: 'pong' });
 });
 
 app.post('/api/identificar-cliente', async (req, res) => {
@@ -231,8 +223,11 @@ app.post('/api/identificar-cliente', async (req, res) => {
         const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneNormalizado]);
         
         if (result.rows.length > 0) {
-            res.json({ success: true, isNew: false, cliente: result.rows[0] });
+            const clienteEncontrado = result.rows[0];
+            logger.info(`Cliente encontrado no DB: ${clienteEncontrado.nome}`);
+            res.json({ success: true, isNew: false, cliente: clienteEncontrado });
         } else {
+            logger.info(`Cliente novo. Telefone validado: ${telefoneNormalizado}`);
             res.json({ success: true, isNew: true, cliente: { telefone: telefoneNormalizado } });
         }
     } catch (error) {
@@ -257,27 +252,28 @@ app.post('/api/criar-pedido', async (req, res) => {
     const numeroClienteParaApi = `${telefoneNormalizado}@c.us`;
     let clientDB;
     try {
-        const nome = cleanInput(cliente.nome) || '';
-        const endereco = cleanInput(cliente.endereco) || '';
-        const referencia = cleanInput(cliente.referencia);
-
         clientDB = await pool.connect();
-        await clientDB.query(
-            'INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4) ON CONFLICT (telefone) DO UPDATE SET nome = EXCLUDED.nome, endereco = EXCLUDED.endereco, referencia = EXCLUDED.referencia',
-            [telefoneNormalizado, nome, endereco, referencia]
-        );
+        const clienteNoDB = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneNormalizado]);
+        if (clienteNoDB.rows.length === 0) {
+            await clientDB.query(
+                'INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4)',
+                [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]
+            );
+            logger.info(`Cliente novo "${cliente.nome}" salvo no banco de dados.`);
+        }
         
         const cupomFiscal = gerarCupomFiscal(pedido);
         await client.sendMessage(numeroClienteParaApi, cupomFiscal);
         logger.info(`✅ Cupom enviado para ${numeroClienteParaApi}`);
         
+        // Mensagens automáticas de acompanhamento
         setTimeout(() => {
-            const msgConfirmacao = `✅ PEDIDO CONFIRMADO! 🚀\nSeu pedido está sendo preparado! 😋️🍔\n\n⏱ *Tempo estimado:* 40-50 minutos\n📱 *Avisaremos quando sair para entrega!`;
+            const msgConfirmacao = `✅ PEDIDO CONFIRMADO! 🚀\nSua explosão de sabores está INDO PARA CHAPA🔥️!!! 😋️🍔\n\n⏱ *Tempo estimado:* 40-50 minutos\n📱 *Acompanharemos seu pedido e avisaremos quando sair para entrega!`;
             client.sendMessage(numeroClienteParaApi, msgConfirmacao).catch(err => logger.error(`Falha ao enviar msg de confirmação: ${err.message}`));
         }, 30 * 1000);
 
         setTimeout(() => {
-            const msgEntrega = `🛵 *SEU PEDIDO ESTÁ A CAMINHO!* 🔔\nChegará em 10 a 15 minutinhos!\n\n_Se já recebeu, por favor ignore esta mensagem._`;
+            const msgEntrega = `🛵 *😋️OIEEE!!! SEU PEDIDO ESTÁ A CAMINHO!* 🔔\nDeve chegar em 10 a 15 minutinhos!\n\n_Se já recebeu, por favor ignore esta mensagem._`;
             client.sendMessage(numeroClienteParaApi, msgEntrega).catch(err => logger.error(`Falha ao enviar msg de entrega: ${err.message}`));
         }, 30 * 60 * 1000);
 
@@ -301,20 +297,8 @@ app.use((err, req, res, next) => {
     res.status(500).json({ success: false, message: "Ocorreu um erro inesperado no servidor." });
 });
 
-// --- INICIALIZAÇÃO SEGURA DO SERVIDOR ---
-async function startServer() {
-    try {
-        await setupDatabase();
-        logger.info('Conexão com o banco de dados pronta. Iniciando servidor e WhatsApp...');
-        
-        app.listen(PORT, () => {
-            logger.info(`🚀 Servidor rodando na porta ${PORT}`);
-            initializeWhatsApp();
-        });
-    } catch (err) {
-        logger.error('Falha crítica na inicialização. O servidor não será iniciado.', err);
-        process.exit(1);
-    }
-}
-
-startServer();
+// --- Iniciar o Servidor ---
+app.listen(PORT, async () => {
+    await setupDatabase().catch(logger.error);
+    logger.info(`🚀 Servidor rodando na porta ${PORT}.`);
+});
