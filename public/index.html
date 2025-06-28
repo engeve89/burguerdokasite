@@ -565,7 +565,6 @@
             fecharModalLogin();
             fecharModalConfirmarDados();
             modalEndereco.style.display = 'flex';
-            // Acessa o valor bruto do telefone do objeto clienteAtual
             const telefoneBruto = clienteAtual.telefone || ''; 
             document.getElementById('input-contato-endereco').value = telefoneBruto;
             document.getElementById('input-nome').focus();
@@ -612,9 +611,8 @@
                     throw new Error(data.message || 'Erro ao verificar telefone.');
                 }
                 
-                // Armazena o telefone bruto para exibição, mas a lógica usa o normalizado
                 clienteAtual = data.cliente;
-                clienteAtual.telefone = telefoneCru; // Mantém o telefone com a máscara para exibição
+                clienteAtual.telefone = telefoneCru; 
 
                 if (data.isNew) {
                     abrirModalEndereco();
@@ -644,9 +642,6 @@
             return subtotal + TAXA_ENTREGA;
         }
 
-        // =================================================================================
-        // FUNÇÃO ATUALIZADA - O CÓDIGO ANTIGO FOI TOTALMENTE SUBSTITUÍDO POR ESTE
-        // =================================================================================
         async function finalizarPedidoComPagamento() {
             if (!metodoPagamentoSelecionado) {
                 alert("Por favor, selecione uma forma de pagamento.");
@@ -666,7 +661,6 @@
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
-            // Objeto do pedido que será enviado para a API
             const pedido = {
                 cliente: clienteAtual,
                 carrinho: carrinho.map(item => ({
@@ -680,7 +674,6 @@
             };
 
             try {
-                // A CHAMADA REAL PARA A API, AGORA ATIVA
                 const response = await fetch('/api/criar-pedido', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -693,7 +686,6 @@
                     throw new Error(data.message || 'Falha ao criar o pedido. Tente novamente.');
                 }
 
-                // Usando o ID real retornado pelo servidor
                 const numeroPedido = data.pedidoId;
                 const codigoEntrega = clienteAtual.telefone.slice(-4);
 
@@ -712,24 +704,17 @@
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
             }
         }
-        // =================================================================================
-        // FIM DA FUNÇÃO ATUALIZADA
-        // =================================================================================
-
 
         function fecharModalConfirmacao() {
             modalConfirmacao.style.display = 'none';
             carrinho = [];
-            // Não resetar o clienteAtual, para que ele possa ver o histórico
             metodoPagamentoSelecionado = null;
             document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
             document.querySelector('.troco-container').style.display = 'none';
             document.getElementById('troco-input').value = '';
             document.getElementById('troco-calculado').style.display = 'none';
-            // Não limpar o telefone, pois o cliente ainda está "logado"
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
-            // Volta para a categoria principal
             const categoriaPrincipal = botoesCategoria[0];
             botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
             categoriaPrincipal.classList.add('ativo');
@@ -816,15 +801,12 @@
             window.addEventListener('resize', checkScroll);
         }
 
-        // --- [NOVA ADIÇÃO] Funções para o Histórico de Pedidos ---
         function abrirModalHistorico() {
             modalHistorico.style.display = 'flex';
-            // Se o cliente já se identificou na sessão atual
             if (clienteAtual && clienteAtual.telefone) {
                 carregarHistorico(clienteAtual.telefone);
                 btnBuscarHistorico.style.display = 'none';
             } else {
-                // Se o cliente ainda não se identificou
                 historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
                 btnBuscarHistorico.style.display = 'block';
             }
@@ -834,11 +816,13 @@
             modalHistorico.style.display = 'none';
         }
 
+        // =========================================================================
+        // FUNÇÃO ATUALIZADA E OTIMIZADA PARA HISTÓRICO DE PEDIDOS
+        // =========================================================================
         async function carregarHistorico(telefone) {
             historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
             
             try {
-                // Esta é a nova rota que você criou no seu backend
                 const response = await fetch(`/api/historico/${telefone}`);
                 if (!response.ok) {
                     throw new Error('Não foi possível buscar o histórico. Tente mais tarde.');
@@ -850,36 +834,41 @@
                     return;
                 }
 
-                // Limpa o container e começa a construir a lista
-                historicoContainer.innerHTML = '';
-                pedidos.forEach(pedido => {
+                // Mapeia cada objeto de pedido para uma string HTML de card. Isso é feito em memória.
+                const cardsHtml = pedidos.map(pedido => {
                     const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
                     
-                    let itensHtml = '';
-                    pedido.itens.forEach(item => {
-                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
-                    });
+                    // Mapeia cada item para uma string de <li> e junta tudo
+                    const itensHtml = pedido.itens.map(item => 
+                        `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`
+                    ).join('');
 
-                    const pedidoCard = document.createElement('div');
-                    pedidoCard.className = 'pedido-card'; 
-                    pedidoCard.innerHTML = `
-                        <div class="pedido-card-header">
-                            <strong>Data: ${dataFormatada}</strong>
-                            <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
-                        </div>
-                        <div class="pedido-card-body">
-                            <p><strong>Status:</strong> ${pedido.status || 'Entregue'}</p>
-                            <ul>${itensHtml}</ul>
+                    // Retorna o HTML completo para um único card de pedido
+                    return `
+                        <div class="pedido-card">
+                            <div class="pedido-card-header">
+                                <strong>Data: ${dataFormatada}</strong>
+                                <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            <div class="pedido-card-body">
+                                <p><strong>SEU PEDIDO</strong></p>
+                                <ul>${itensHtml}</ul>
+                            </div>
                         </div>
                     `;
-                    historicoContainer.appendChild(pedidoCard);
-                });
+                }).join(''); // Junta o HTML de todos os cards em uma única string gigante
+
+                // Atualiza o DOM apenas UMA VEZ com todo o conteúdo. Isso é extremamente rápido.
+                historicoContainer.innerHTML = cardsHtml;
 
             } catch (error) {
                 historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
                 console.error("Erro ao carregar histórico:", error);
             }
         }
+        // =========================================================================
+        // FIM DA FUNÇÃO ATUALIZADA
+        // =========================================================================
 
         function inicializar() {
             carregarProdutos('Burgers 180g');
@@ -980,16 +969,13 @@
                 document.getElementById('input-referencia').value = clienteAtual.referencia || '';
             });
 
-            // --- [NOVA ADIÇÃO] Event Listeners para o Histórico ---
             btnMeusPedidos.addEventListener('click', abrirModalHistorico);
             
             btnBuscarHistorico.addEventListener('click', () => {
-                // Reutiliza o modal de login para pegar o telefone do cliente
                 fecharModalHistorico();
                 abrirModalLogin(); 
             });
 
-            // LÓGICA CORRIGIDA PARA O BOTÃO FECHAR DO MODAL HISTÓRICO
             document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico);
         }
 
