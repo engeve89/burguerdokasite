@@ -150,15 +150,10 @@ async function initializeWhatsApp() {
             }
         });
 
-        // ==================================================================
-        // LINK DO QRCODE RESTAURADO AQUI
-        // ==================================================================
         client.on('qr', qr => {
             whatsappStatus = 'qr_pending';
             logger.info('Gerando QR Code...');
             qrcode.generate(qr, { small: true });
-            
-            // LINHAS RESTAURADAS:
             const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
             logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
         });
@@ -300,6 +295,19 @@ app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
   
   try {
     clientDB = await pool.connect();
+
+    // ==================================================================
+    // INÍCIO DA CORREÇÃO DE SQL
+    // ==================================================================
+    // Sanitiza os dados para evitar erros de SQL com valores undefined.
+    // Garante que nome e endereço sejam strings e que a referência opcional seja null se não for fornecida.
+    const nome = cliente.nome || '';
+    const endereco = cliente.endereco || '';
+    const referencia = cliente.referencia || null; // Usa null para valores opcionais vazios
+    // ==================================================================
+    // FIM DA CORREÇÃO DE SQL
+    // ==================================================================
+
     await clientDB.query(`
         INSERT INTO clientes (telefone, nome, endereco, referencia) 
         VALUES ($1, $2, $3, $4)
@@ -307,7 +315,7 @@ app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
             nome = EXCLUDED.nome, 
             endereco = EXCLUDED.endereco, 
             referencia = EXCLUDED.referencia;
-    `, [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]);
+    `, [telefoneNormalizado, nome, endereco, referencia]); // Usa as variáveis sanitizadas
 
     const cupom = gerarCupomFiscal(pedido);
     await client.sendMessage(numeroCliente, cupom);
