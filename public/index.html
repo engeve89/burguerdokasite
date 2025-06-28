@@ -408,6 +408,12 @@
         const carrinhoTaxaEntrega = document.getElementById('carrinho-taxa-entrega');
         const carrinhoTotalValor = document.getElementById('carrinho-total-valor');
         const btnNovoPedido = document.getElementById('btn-novo-pedido');
+        
+        // --- [NOVA ADIÇÃO] Constantes para o Histórico ---
+        const modalHistorico = document.getElementById('modalHistorico');
+        const historicoContainer = document.getElementById('historico-container');
+        const btnMeusPedidos = document.getElementById('btn-meus-pedidos');
+        const btnBuscarHistorico = document.getElementById('btn-buscar-historico');
 
         let carrinho = [];
         let clienteAtual = null;
@@ -551,18 +557,38 @@
             btnContinuar.disabled = true;
             btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
-            setTimeout(() => {
-                clienteAtual = { telefone: telefoneLimpo, telefoneFormatado: telefoneCru };
-                const dadosSalvos = localStorage.getItem(telefoneLimpo);
-                if (!dadosSalvos) {
-                    abrirModalEndereco();
-                } else {
-                    clienteAtual = { ...clienteAtual, ...JSON.parse(dadosSalvos) };
-                    abrirModalConfirmarDados(clienteAtual);
-                }
+            // ATENÇÃO: A lógica de verificação agora deve chamar a API do backend.
+            // A lógica antiga com localStorage será mantida como fallback, mas a primária será a API.
+            try {
+                // Supondo que o backend esteja rodando no mesmo domínio/porta, ou com CORS configurado
+                // const response = await fetch('/api/identificar-cliente', {
+                //    method: 'POST',
+                //    headers: { 'Content-Type': 'application/json' },
+                //    body: JSON.stringify({ telefone: telefoneLimpo })
+                // });
+                // const data = await response.json();
+                // if (!response.ok) {
+                //    throw new Error(data.message || 'Erro ao verificar telefone.');
+                // }
+                
+                // --- Simulação da lógica que será substituída pela API ---
+                setTimeout(() => {
+                    clienteAtual = { telefone: telefoneLimpo, telefoneFormatado: telefoneCru };
+                    const dadosSalvos = localStorage.getItem(telefoneLimpo); // Simula busca no DB
+                    if (!dadosSalvos) { // data.isNew === true
+                        abrirModalEndereco();
+                    } else { // data.isNew === false
+                        clienteAtual = { ...clienteAtual, ...JSON.parse(dadosSalvos) }; // clienteAtual = data.cliente
+                        abrirModalConfirmarDados(clienteAtual);
+                    }
+                }, 1000);
+
+            } catch (error) {
+                alert(error.message);
+            } finally {
                 btnContinuar.disabled = false;
                 btnContinuar.textContent = 'Continuar';
-            }, 1000);
+            }
         }
 
         function salvarEndereco() {
@@ -572,6 +598,7 @@
             clienteAtual.nome = nome;
             clienteAtual.endereco = endereco;
             clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
+            // Salvar no localStorage (será substituído pela chamada à API /criar-pedido)
             localStorage.setItem(clienteAtual.telefone, JSON.stringify({ nome: clienteAtual.nome, endereco: clienteAtual.endereco, referencia: clienteAtual.referencia }));
             abrirModalPagamento();
         }
@@ -601,6 +628,18 @@
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
             
+            // ATENÇÃO: Lógica para enviar o pedido para a API do backend
+            // const pedido = {
+            //    cliente: clienteAtual,
+            //    carrinho: carrinho,
+            //    pagamento: metodoPagamentoSelecionado,
+            //    troco: document.getElementById('troco-input').value || null
+            // };
+            // try {
+            //    const response = await fetch('/api/criar-pedido', { ... });
+            //    const data = await response.json();
+            // } ...
+            
             setTimeout(() => {
                 const numeroPedido = `WEB-${Math.floor(1000 + Math.random() * 9000)}`;
                 const codigoEntrega = clienteAtual.telefone.slice(-4);
@@ -621,13 +660,13 @@
         function fecharModalConfirmacao() {
             modalConfirmacao.style.display = 'none';
             carrinho = [];
-            clienteAtual = null;
+            // Não resetar o clienteAtual, para que ele possa ver o histórico
             metodoPagamentoSelecionado = null;
             document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
             document.querySelector('.troco-container').style.display = 'none';
             document.getElementById('troco-input').value = '';
             document.getElementById('troco-calculado').style.display = 'none';
-            document.getElementById('input-telefone').value = '';
+            // Não limpar o telefone, pois o cliente ainda está "logado"
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
             carregarProdutos('Burgers 180g');
@@ -711,6 +750,71 @@
             menu.addEventListener('scroll', checkScroll);
             window.addEventListener('load', checkScroll);
             window.addEventListener('resize', checkScroll);
+        }
+
+        // --- [NOVA ADIÇÃO] Funções para o Histórico de Pedidos ---
+        function abrirModalHistorico() {
+            modalHistorico.style.display = 'flex';
+            // Se o cliente já se identificou na sessão atual
+            if (clienteAtual && clienteAtual.telefone) {
+                carregarHistorico(clienteAtual.telefone);
+                btnBuscarHistorico.style.display = 'none';
+            } else {
+                // Se o cliente ainda não se identificou
+                historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
+                btnBuscarHistorico.style.display = 'block';
+            }
+        }
+        
+        function fecharModalHistorico() {
+            modalHistorico.style.display = 'none';
+        }
+
+        async function carregarHistorico(telefone) {
+            historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
+            
+            try {
+                // Esta é a nova rota que você criou no seu backend
+                const response = await fetch(`/api/historico/${telefone}`);
+                if (!response.ok) {
+                    throw new Error('Não foi possível buscar o histórico. Tente mais tarde.');
+                }
+                const pedidos = await response.json();
+
+                if (pedidos.length === 0) {
+                    historicoContainer.innerHTML = '<p style="text-align:center; color:#888;">Você ainda não fez nenhum pedido conosco.</p>';
+                    return;
+                }
+
+                // Limpa o container e começa a construir a lista
+                historicoContainer.innerHTML = '';
+                pedidos.forEach(pedido => {
+                    const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+                    
+                    let itensHtml = '';
+                    pedido.itens.forEach(item => {
+                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
+                    });
+
+                    const pedidoCard = document.createElement('div');
+                    pedidoCard.className = 'pedido-card'; 
+                    pedidoCard.innerHTML = `
+                        <div class="pedido-card-header">
+                            <strong>Data: ${dataFormatada}</strong>
+                            <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <div class="pedido-card-body">
+                            <p><strong>Status:</strong> ${pedido.status || 'Entregue'}</p>
+                            <ul>${itensHtml}</ul>
+                        </div>
+                    `;
+                    historicoContainer.appendChild(pedidoCard);
+                });
+
+            } catch (error) {
+                historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
+                console.error("Erro ao carregar histórico:", error);
+            }
         }
 
         function inicializar() {
@@ -810,6 +914,15 @@
                 document.getElementById('input-nome').value = clienteAtual.nome;
                 document.getElementById('input-endereco').value = clienteAtual.endereco;
                 document.getElementById('input-referencia').value = clienteAtual.referencia || '';
+            });
+
+            // --- [NOVA ADIÇÃO] Event Listeners para o Histórico ---
+            btnMeusPedidos.addEventListener('click', abrirModalHistorico);
+            
+            btnBuscarHistorico.addEventListener('click', () => {
+                // Reutiliza o modal de login para pegar o telefone do cliente
+                fecharModalHistorico();
+                abrirModalLogin(); 
             });
         }
 
