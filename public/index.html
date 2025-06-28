@@ -25,31 +25,29 @@
             top: 0;
             z-index: 100;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            /* PROPRIEDADES ATUALIZADAS PARA O ALINHAMENTO */
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        /* Estilo aprimorado para o botão de Meus Pedidos */
         #btn-meus-pedidos {
-            background: transparent; /* Fundo transparente */
-            border: 1px solid var(--laranja); /* Borda sutil na cor da marca */
+            background: transparent;
+            border: 1px solid var(--laranja);
             color: var(--branco);
-            font-size: 14px; /* Fonte um pouco menor e mais delicada */
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            padding: 6px 12px; /* Espaçamento interno para não ficar "apertado" */
-            border-radius: 20px; /* Bordas arredondadas para combinar com os botões de categoria */
+            padding: 6px 12px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
-            gap: 8px; /* Espaço entre o ícone e o texto */
-            transition: background-color 0.3s, color 0.3s; /* Transição suave para o hover */
+            gap: 8px;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         #btn-meus-pedidos:hover {
-            background-color: var(--laranja); /* Muda a cor de fundo no hover */
-            color: var(--marrom); /* Muda a cor do texto para um bom contraste */
+            background-color: var(--laranja);
+            color: var(--marrom);
         }
 
         .logo { font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
@@ -62,7 +60,6 @@
         .categoria-btn { padding: 12px 15px; margin: 8px 5px; background: var(--cinza); border: none; border-radius: 20px; font-weight: bold; white-space: nowrap; cursor: pointer; font-size: 14px; transition: all 0.2s; }
         .categoria-btn.ativo { background: var(--laranja); color: var(--branco); }
         
-        /* Estilo para os botões de rolagem do MENU */
         .menu-scroll-btn {
             display: none;
             align-items: center;
@@ -151,7 +148,6 @@
         .info-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
         .success-box { background-color: #FFF3E0; padding: 15px; border-radius: 10px; margin: 15px 0; }
         
-        /* Estilo para os botões de rolagem do modal */
         .modal-scroll-btn {
             position: absolute;
             right: 15px;
@@ -199,7 +195,6 @@
             }
         }
         
-        /* NOVA ADIÇÃO: Estilos para o Histórico de Pedidos */
         .pedido-card {
             background-color: #f9f9f9;
             border: 1px solid #ddd;
@@ -442,8 +437,6 @@
         const carrinhoTaxaEntrega = document.getElementById('carrinho-taxa-entrega');
         const carrinhoTotalValor = document.getElementById('carrinho-total-valor');
         const btnNovoPedido = document.getElementById('btn-novo-pedido');
-        
-        // --- [NOVA ADIÇÃO] Constantes para o Histórico ---
         const modalHistorico = document.getElementById('modalHistorico');
         const historicoContainer = document.getElementById('historico-container');
         const btnMeusPedidos = document.getElementById('btn-meus-pedidos');
@@ -453,6 +446,29 @@
         let clienteAtual = null;
         let metodoPagamentoSelecionado = null;
         
+        // Função de throttling para otimizar eventos
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Verifica se um elemento está visível
+        function isElementVisible(el) {
+            const rect = el.getBoundingClientRect();
+            return (
+                rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.bottom >= 0
+            );
+        }
+
         const cardapioDB = [
             // Burgers 180g
             { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
@@ -494,6 +510,10 @@
         function carregarProdutos(categoriaSelecionada) {
             produtosContainer.innerHTML = '';
             const produtosFiltrados = cardapioDB.filter(p => p.categoria === categoriaSelecionada);
+            
+            // Usar DocumentFragment para melhor performance
+            const fragment = document.createDocumentFragment();
+            
             produtosFiltrados.forEach(produto => {
                 const card = document.createElement('div');
                 card.className = 'produto-card';
@@ -507,14 +527,24 @@
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
-                produtosContainer.appendChild(card);
+                fragment.appendChild(card);
             });
+            
+            produtosContainer.appendChild(fragment);
         }
 
         function adicionarAoCarrinho(id) {
             const produto = cardapioDB.find(p => p.id === id);
             const itemExistente = carrinho.find(item => item.id === id);
-            if (itemExistente) { itemExistente.quantidade++; } else { carrinho.push({ ...produto, quantidade: 1, observacao: "" }); }
+            if (itemExistente) { 
+                itemExistente.quantidade++; 
+            } else { 
+                carrinho.push({ 
+                    ...produto, 
+                    quantidade: 1, 
+                    observacao: "" 
+                }); 
+            }
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
         }
@@ -522,14 +552,19 @@
         function removerDoCarrinho(id, removerTudo = false) {
             const itemIndex = carrinho.findIndex(item => item.id === id);
             if (itemIndex > -1) {
-                if (removerTudo || carrinho[itemIndex].quantidade === 1) { carrinho.splice(itemIndex, 1); } else { carrinho[itemIndex].quantidade--; }
+                if (removerTudo || carrinho[itemIndex].quantidade === 1) { 
+                    carrinho.splice(itemIndex, 1); 
+                } else { 
+                    carrinho[itemIndex].quantidade--; 
+                }
             }
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
         }
 
         function atualizarContadorCarrinho() {
-            contadorCarrinho.textContent = carrinho.reduce((total, item) => total + item.quantidade, 0);
+            const totalItens = carrinho.reduce((total, item) => total + item.quantidade, 0);
+            contadorCarrinho.textContent = totalItens;
         }
 
         function atualizarModalCarrinho() {
@@ -540,21 +575,29 @@
                 carrinhoSubtotal.textContent = "R$ 0,00";
                 carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
                 carrinhoTotalValor.textContent = "R$ 0,00";
-            } else {
-                document.getElementById('btn-finalizar-pedido').style.display = 'block';
-                let subtotal = 0;
-                carrinho.forEach(item => {
-                    subtotal += item.preco * item.quantidade;
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'carrinho-item';
-                    itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
-                    carrinhoItensContainer.appendChild(itemDiv);
-                });
-                const total = subtotal + TAXA_ENTREGA;
-                carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-                carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
-                carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+                return;
             }
+
+            document.getElementById('btn-finalizar-pedido').style.display = 'block';
+            let subtotal = 0;
+            
+            // Usar DocumentFragment para melhor performance
+            const fragment = document.createDocumentFragment();
+            
+            carrinho.forEach(item => {
+                subtotal += item.preco * item.quantidade;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'carrinho-item';
+                itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
+                fragment.appendChild(itemDiv);
+            });
+            
+            carrinhoItensContainer.appendChild(fragment);
+            
+            const total = subtotal + TAXA_ENTREGA;
+            carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+            carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
+            carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         }
         
         function abrirModalCarrinho() { modalCarrinho.style.display = 'flex'; }
@@ -612,7 +655,7 @@
                 }
                 
                 clienteAtual = data.cliente;
-                clienteAtual.telefone = telefoneCru; 
+                clienteAtual.telefone = telefoneCru;
 
                 if (data.isNew) {
                     abrirModalEndereco();
@@ -630,7 +673,10 @@
         function salvarEndereco() {
             const nome = document.getElementById('input-nome').value.trim();
             const endereco = document.getElementById('input-endereco').value.trim();
-            if (!nome || !endereco) { alert("Por favor, preencha Nome e Endereço."); return; }
+            if (!nome || !endereco) { 
+                alert("Por favor, preencha Nome e Endereço."); 
+                return; 
+            }
             clienteAtual.nome = nome;
             clienteAtual.endereco = endereco;
             clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
@@ -723,10 +769,14 @@
 
         function gerenciarBotoesScrollModal() {
             const modalContent = document.querySelector('#modalConfirmacao .modal-content');
+            if (!modalContent) return;
+
             const btnScrollUp = document.getElementById('btn-scroll-up');
             const btnScrollDown = document.getElementById('btn-scroll-down');
 
             const atualizarVisibilidade = () => {
+                if (modalConfirmacao.style.display !== 'flex') return;
+                
                 const hasScroll = modalContent.scrollHeight > modalContent.clientHeight;
                 
                 if (!hasScroll) {
@@ -748,24 +798,34 @@
                 }
             };
 
+            // Aplicar throttling
+            const throttledUpdate = throttle(atualizarVisibilidade, 100);
+
             btnScrollUp.onclick = () => {
                 modalContent.scrollBy({ top: -150, behavior: 'smooth' });
+                setTimeout(throttledUpdate, 300);
             };
 
             btnScrollDown.onclick = () => {
                 modalContent.scrollBy({ top: 150, behavior: 'smooth' });
+                setTimeout(throttledUpdate, 300);
             };
 
-            modalContent.addEventListener('scroll', atualizarVisibilidade);
-            atualizarVisibilidade();
+            modalContent.addEventListener('scroll', throttledUpdate);
+            throttledUpdate();
         }
 
         function gerenciarBotoesScrollMenu() {
             const menu = document.querySelector('.menu-categorias');
+            if (!menu) return;
+
             const btnLeft = document.getElementById('menu-scroll-left');
             const btnRight = document.getElementById('menu-scroll-right');
 
             const checkScroll = () => {
+                // Só calcular se o elemento estiver visível
+                if (!isElementVisible(menu)) return;
+                
                 const hasHorizontalScroll = menu.scrollWidth > menu.clientWidth;
 
                 if (!hasHorizontalScroll) {
@@ -788,17 +848,24 @@
                 }
             };
 
+            // Aplicar throttling
+            const throttledCheck = throttle(checkScroll, 100);
+
             btnLeft.addEventListener('click', () => {
                 menu.scrollBy({ left: -150, behavior: 'smooth' });
+                setTimeout(throttledCheck, 300);
             });
 
             btnRight.addEventListener('click', () => {
                 menu.scrollBy({ left: 150, behavior: 'smooth' });
+                setTimeout(throttledCheck, 300);
             });
             
-            menu.addEventListener('scroll', checkScroll);
-            window.addEventListener('load', checkScroll);
-            window.addEventListener('resize', checkScroll);
+            menu.addEventListener('scroll', throttledCheck);
+            
+            // Evento de resize com throttling
+            window.addEventListener('resize', throttle(throttledCheck, 200));
+            throttledCheck();
         }
 
         function abrirModalHistorico() {
@@ -816,9 +883,6 @@
             modalHistorico.style.display = 'none';
         }
 
-        // =========================================================================
-        // FUNÇÃO ATUALIZADA E OTIMIZADA PARA HISTÓRICO DE PEDIDOS
-        // =========================================================================
         async function carregarHistorico(telefone) {
             historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
             
@@ -834,55 +898,50 @@
                     return;
                 }
 
-                // Mapeia cada objeto de pedido para uma string HTML de card. Isso é feito em memória.
-                const cardsHtml = pedidos.map(pedido => {
+                historicoContainer.innerHTML = '';
+                pedidos.forEach(pedido => {
                     const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
                     
-                    // Mapeia cada item para uma string de <li> e junta tudo
-                    const itensHtml = pedido.itens.map(item => 
-                        `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`
-                    ).join('');
+                    let itensHtml = '';
+                    pedido.itens.forEach(item => {
+                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
+                    });
 
-                    // Retorna o HTML completo para um único card de pedido
-                    return `
-                        <div class="pedido-card">
-                            <div class="pedido-card-header">
-                                <strong>Data: ${dataFormatada}</strong>
-                                <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
-                            </div>
-                            <div class="pedido-card-body">
-                                <p><strong>SEU PEDIDO</strong></p>
-                                <ul>${itensHtml}</ul>
-                            </div>
+                    const pedidoCard = document.createElement('div');
+                    pedidoCard.className = 'pedido-card'; 
+                    pedidoCard.innerHTML = `
+                        <div class="pedido-card-header">
+                            <strong>Data: ${dataFormatada}</strong>
+                            <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <div class="pedido-card-body">
+                            <p><strong>Status:</strong> ${pedido.status || 'Entregue'}</p>
+                            <ul>${itensHtml}</ul>
                         </div>
                     `;
-                }).join(''); // Junta o HTML de todos os cards em uma única string gigante
-
-                // Atualiza o DOM apenas UMA VEZ com todo o conteúdo. Isso é extremamente rápido.
-                historicoContainer.innerHTML = cardsHtml;
+                    historicoContainer.appendChild(pedidoCard);
+                });
 
             } catch (error) {
                 historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
-                console.error("Erro ao carregar histórico:", error);
             }
         }
-        // =========================================================================
-        // FIM DA FUNÇÃO ATUALIZADA
-        // =========================================================================
 
         function inicializar() {
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
             gerenciarBotoesScrollMenu();
             
-            document.getElementById('troco-input').addEventListener('input', function() {
-                const trocoInput = parseFloat(this.value);
+            // Debounce para o input de troco
+            const trocoInput = document.getElementById('troco-input');
+            trocoInput.addEventListener('input', throttle(function() {
+                const trocoValue = parseFloat(this.value);
                 const valorPedido = calcularTotalPedido();
                 const trocoCalculado = document.getElementById('troco-calculado');
                 
-                if (trocoInput && !isNaN(trocoInput)) {
-                    if (trocoInput > valorPedido) {
-                        const trocoValor = trocoInput - valorPedido;
+                if (trocoValue && !isNaN(trocoValue)) {
+                    if (trocoValue > valorPedido) {
+                        const trocoValor = trocoValue - valorPedido;
                         document.getElementById('valor-troco-texto').textContent = 
                             `Troco: R$ ${trocoValor.toFixed(2).replace('.', ',')}`;
                         trocoCalculado.style.display = 'block';
@@ -892,7 +951,7 @@
                 } else {
                     trocoCalculado.style.display = 'none';
                 }
-            });
+            }, 300));
 
             botoesCategoria.forEach(botao => { 
                 botao.addEventListener('click', () => { 
@@ -970,16 +1029,18 @@
             });
 
             btnMeusPedidos.addEventListener('click', abrirModalHistorico);
-            
             btnBuscarHistorico.addEventListener('click', () => {
                 fecharModalHistorico();
                 abrirModalLogin(); 
             });
-
             document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico);
         }
 
-        inicializar();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializar);
+        } else {
+            inicializar();
+        }
     </script>
 </body>
 </html>
