@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth } = require('whatsapp-web.js'); // Usando LocalAuth da versão estável
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const fs = require('fs');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -59,12 +59,12 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false
   },
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
   max: 5
 });
 
-// --- Função para criar a tabela de clientes (da sua versão funcional) ---
+// --- Função para criar a tabela de clientes ---
 async function setupDatabase() {
     let clientDB;
     try {
@@ -81,15 +81,13 @@ async function setupDatabase() {
         logger.info('✅ Tabela "clientes" verificada/criada com sucesso no banco de dados.');
     } catch (err) {
         logger.error('❌ Erro ao configurar o banco de dados:', err);
-        throw err; // Lança o erro para impedir a inicialização do servidor
+        throw err;
     } finally {
         if (clientDB) clientDB.release();
     }
 }
 
-// ==================================================================
-// LÓGICA DE WHATSAPP ESTÁVEL E COM RECONEXÃO AUTOMÁTICA
-// ==================================================================
+// Lógica de WhatsApp estável
 let client;
 let whatsappStatus = 'initializing';
 let isInitializing = false;
@@ -156,6 +154,11 @@ function normalizarTelefone(telefone) {
     return `55${limpo}`;
 }
 
+const cleanInput = (input) => {
+    if (typeof input !== 'string' || !input) return null;
+    return input.replace(/\s+/g, ' ').trim();
+};
+
 function gerarCupomFiscal(pedido) {
     const { cliente, carrinho, pagamento, troco } = pedido;
     const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
@@ -176,15 +179,17 @@ function gerarCupomFiscal(pedido) {
         const nomeFormatado = item.nome.padEnd(20, ' ');
         const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
         cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
-        if (item.observacao) cupom += `  Obs: ${item.observacao}\n`;
+        const obsLimpa = cleanInput(item.observacao);
+        if (obsLimpa) cupom += `  Obs: ${obsLimpa}\n`;
     });
     cupom += `------------------------------------------------\n`;
     cupom += `Subtotal:      R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
     cupom += `Taxa de Entrega: R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
     cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
     cupom += `------------------------------------------------\n`;
-    cupom += `*ENDEREÇO DE ENTREGA:*\n${cliente.endereco}\n`;
-    if (cliente.referencia) cupom += `Ref: ${cliente.referencia}\n`;
+    cupom += `*ENDEREÇO DE ENTREGA:*\n${cleanInput(cliente.endereco)}\n`;
+    const refLimpa = cleanInput(cliente.referencia);
+    if (refLimpa) cupom += `Ref: ${refLimpa}\n`;
     cupom += `------------------------------------------------\n`;
     cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
     if (pagamento === 'Dinheiro' && troco) {
@@ -252,20 +257,10 @@ app.post('/api/criar-pedido', async (req, res) => {
     const numeroClienteParaApi = `${telefoneNormalizado}@c.us`;
     let clientDB;
     try {
-        // ==================================================================
-        // INÍCIO DA CORREÇÃO FINAL E DEFINITIVA DE SQL
-        // ==================================================================
-        const cleanInput = (input) => {
-            if (typeof input !== 'string' || !input) return null;
-            return input.replace(/\s+/g, ' ').trim();
-        };
-
         const nome = cleanInput(cliente.nome) || '';
         const endereco = cleanInput(cliente.endereco) || '';
         const referencia = cleanInput(cliente.referencia);
-        // ==================================================================
-        // FIM DA CORREÇÃO FINAL E DEFINITIVA DE SQL
-        // ==================================================================
+
         clientDB = await pool.connect();
         await clientDB.query(
             'INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4) ON CONFLICT (telefone) DO UPDATE SET nome = EXCLUDED.nome, endereco = EXCLUDED.endereco, referencia = EXCLUDED.referencia',
