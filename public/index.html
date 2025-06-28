@@ -136,32 +136,28 @@
         <div class="carrinho-contador">0</div>
     </button>
     
-    <!-- Modal Carrinho -->
     <div id="modalCarrinho" class="modal">
          <div class="modal-content">
-            <div class="modal-header">
-                <h2>Meu Carrinho</h2>
-                <button class="btn-fechar-modal" onclick="fecharModalCarrinho()">&times;</button>
-            </div>
-            <div id="carrinho-itens"></div>
-            <div class="carrinho-footer">
-                <div class="carrinho-resumo">
-                    <div><span>Subtotal</span><span id="carrinho-subtotal">R$ 0,00</span></div>
-                    <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
-                </div>
-                <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
-                <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
-            </div>
-        </div>
+             <div class="modal-header">
+                 <h2>Meu Carrinho</h2>
+                 <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
+             <div id="carrinho-itens"></div>
+             <div class="carrinho-footer">
+                 <div class="carrinho-resumo">
+                     <div><span>Subtotal</span><span id="carrinho-subtotal">R$ 0,00</span></div>
+                     <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
+                 </div>
+                 <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
+                 <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
+             </div>
+         </div>
     </div>
     
-    <!-- Modal Login -->
     <div id="modalLogin" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Identificação</h2>
-                <button class="btn-fechar-modal" onclick="fecharModalLogin()">&times;</button>
-            </div>
+                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
             <div class="form-group">
                 <label for="input-telefone">Seu WhatsApp (apenas números)</label>
                 <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
@@ -171,13 +167,11 @@
         </div>
     </div>
     
-    <!-- Modal Confirmar Dados -->
     <div id="modalConfirmarDados" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Confirme seus Dados</h2>
-                <button class="btn-fechar-modal" onclick="fecharModalConfirmarDados()">&times;</button>
-            </div>
+                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
             <p>Olá de novo! Encontramos seu cadastro. Os dados abaixo estão corretos?</p>
             <div id="dados-confirmacao"></div>
             <div class="form-actions">
@@ -187,13 +181,11 @@
         </div>
     </div>
     
-    <!-- Modal Endereço -->
     <div id="modalEndereco" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Onde será a entrega?</h2>
-                <button class="btn-fechar-modal" onclick="fecharModalEndereco()">&times;</button>
-            </div>
+                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
             <p style="margin-bottom: 15px; font-size: 14px; color: #666;">Como é sua primeira vez (ou você pediu para editar), precisamos do seu endereço.</p>
             <div class="form-group"><label>Contato (WhatsApp)</label><input type="tel" id="input-contato-endereco" readonly></div>
              <div class="form-group"><label for="input-nome">Nome Completo</label><input type="text" id="input-nome" placeholder="Seu nome completo"></div>
@@ -203,13 +195,11 @@
         </div>
     </div>
     
-    <!-- Modal Pagamento -->
     <div id="modalPagamento" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>💰 Forma de Pagamento</h2>
-                <button class="btn-fechar-modal" onclick="fecharModalPagamento()">&times;</button>
-            </div>
+                <button class="btn-fechar-modal" onclick="fecharTodosOsModais()">&times;</button> </div>
             
             <div class="metodo-pagamento" data-metodo="Dinheiro">
                 <i class="fas fa-money-bill-wave"></i>
@@ -265,7 +255,6 @@
         </div>
     </div>
     
-    <!-- Modal Confirmação -->
     <div id="modalConfirmacao" class="modal">
         <div class="modal-content confirmacao-content">
             <button class="btn-fechar-modal" onclick="fecharModalConfirmacao()">&times;</button>
@@ -375,9 +364,9 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                    <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                    <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                 </div>`;
+                                     <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                     <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                   </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
@@ -437,6 +426,13 @@
 
         function fecharModalCarrinho() { 
             modalCarrinho.style.display = 'none'; 
+        }
+
+        // FUNÇÃO ADICIONADA: Unifica o fechamento de todos os modais para voltar ao menu
+        function fecharTodosOsModais() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.style.display = 'none';
+            });
         }
 
         function abrirModalLogin() { 
