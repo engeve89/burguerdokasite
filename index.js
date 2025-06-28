@@ -297,15 +297,20 @@ app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
     clientDB = await pool.connect();
 
     // ==================================================================
-    // INÍCIO DA CORREÇÃO DE SQL
+    // INÍCIO DA CORREÇÃO FINAL DE SQL
     // ==================================================================
-    // Sanitiza os dados para evitar erros de SQL com valores undefined.
-    // Garante que nome e endereço sejam strings e que a referência opcional seja null se não for fornecida.
-    const nome = cliente.nome || '';
-    const endereco = cliente.endereco || '';
-    const referencia = cliente.referencia || null; // Usa null para valores opcionais vazios
+    // Função para limpar os inputs, removendo espaços não-separáveis (\u00A0)
+    // e aparando espaços no início e no fim.
+    const cleanInput = (input) => {
+        if (!input) return null;
+        return input.replace(/\u00A0/g, ' ').trim();
+    };
+
+    const nome = cleanInput(cliente.nome) || ''; // Nome não pode ser nulo
+    const endereco = cleanInput(cliente.endereco) || ''; // Endereço não pode ser nulo
+    const referencia = cleanInput(cliente.referencia); // Referência pode ser nula
     // ==================================================================
-    // FIM DA CORREÇÃO DE SQL
+    // FIM DA CORREÇÃO FINAL DE SQL
     // ==================================================================
 
     await clientDB.query(`
@@ -315,7 +320,7 @@ app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
             nome = EXCLUDED.nome, 
             endereco = EXCLUDED.endereco, 
             referencia = EXCLUDED.referencia;
-    `, [telefoneNormalizado, nome, endereco, referencia]); // Usa as variáveis sanitizadas
+    `, [telefoneNormalizado, nome, endereco, referencia]); // Usa as variáveis limpas
 
     const cupom = gerarCupomFiscal(pedido);
     await client.sendMessage(numeroCliente, cupom);
