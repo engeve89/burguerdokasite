@@ -297,20 +297,24 @@ app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
     clientDB = await pool.connect();
 
     // ==================================================================
-    // INÍCIO DA CORREÇÃO FINAL DE SQL
+    // INÍCIO DA CORREÇÃO FINAL E DEFINITIVA DE SQL
     // ==================================================================
-    // Função para limpar os inputs, removendo espaços não-separáveis (\u00A0)
-    // e aparando espaços no início e no fim.
+    // Esta função usa uma expressão regular (/s+/g) para substituir QUALQUER
+    // tipo de caractere de espaçamento (espaços múltiplos, tabs, espaços
+    // não-separáveis, etc.) por um único espaço normal.
     const cleanInput = (input) => {
-        if (!input) return null;
-        return input.replace(/\u00A0/g, ' ').trim();
+        if (typeof input !== 'string' || !input) {
+            return null;
+        }
+        // Substitui todos os tipos de espaços por um só e remove os das pontas.
+        return input.replace(/\s+/g, ' ').trim();
     };
 
-    const nome = cleanInput(cliente.nome) || ''; // Nome não pode ser nulo
-    const endereco = cleanInput(cliente.endereco) || ''; // Endereço não pode ser nulo
-    const referencia = cleanInput(cliente.referencia); // Referência pode ser nula
+    const nome = cleanInput(cliente.nome) || ''; // Nome é obrigatório, então usa '' se for nulo.
+    const endereco = cleanInput(cliente.endereco) || ''; // Endereço é obrigatório.
+    const referencia = cleanInput(cliente.referencia); // Referência é opcional, pode ser null.
     // ==================================================================
-    // FIM DA CORREÇÃO FINAL DE SQL
+    // FIM DA CORREÇÃO FINAL E DEFINITIVA DE SQL
     // ==================================================================
 
     await clientDB.query(`
@@ -320,7 +324,7 @@ app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
             nome = EXCLUDED.nome, 
             endereco = EXCLUDED.endereco, 
             referencia = EXCLUDED.referencia;
-    `, [telefoneNormalizado, nome, endereco, referencia]); // Usa as variáveis limpas
+    `, [telefoneNormalizado, nome, endereco, referencia]); // Usa as variáveis limpas e seguras
 
     const cupom = gerarCupomFiscal(pedido);
     await client.sendMessage(numeroCliente, cupom);
