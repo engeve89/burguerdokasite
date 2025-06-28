@@ -66,7 +66,8 @@
         #carrinho-itens { overflow-y: auto; flex-grow: 1; padding-right: 10px; }
         .carrinho-item { display: flex; flex-direction: column; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .carrinho-item-header { display: flex; align-items: center; width: 100%; }
-        .carrinho-item-info { flex-grow: 1; } .carrinho-item-info p { font-size: 14px; color: #666; }
+        .carrinho-item-info { flex-grow: 1; } 
+        .carrinho-item-info p { font-size: 14px; color: #666; }
         .quantidade-controls { display: flex; align-items: center; margin: 0 10px; }
         .quantidade-controls button { background: var(--cinza); border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; cursor: pointer; }
         .quantidade-controls span { margin: 0 12px; font-size: 16px; }
@@ -430,14 +431,62 @@
             }
         }
         
-        function abrirModalCarrinho() { modalCarrinho.style.display = 'flex'; }
-        function fecharModalCarrinho() { modalCarrinho.style.display = 'none'; }
-        function abrirModalLogin() { fecharModalCarrinho(); modalLogin.style.display = 'flex'; document.getElementById('input-telefone').focus(); }
-        function fecharModalLogin() { modalLogin.style.display = 'none'; abrirModalCarrinho(); }
-        function abrirModalEndereco() { fecharModalLogin(); fecharModalConfirmarDados(); modalEndereco.style.display = 'flex'; document.getElementById('input-contato-endereco').value = clienteAtual.telefoneFormatado; document.getElementById('input-nome').focus(); }
-        function fecharModalEndereco() { modalEndereco.style.display = 'none'; }
-        function abrirModalPagamento() { fecharModalLogin(); fecharModalEndereco(); fecharModalConfirmarDados(); modalPagamento.style.display = 'flex'; }
-        function fecharModalPagamento() { modalPagamento.style.display = 'none'; }
+        function abrirModalCarrinho() { 
+            modalCarrinho.style.display = 'flex'; 
+        }
+
+        function fecharModalCarrinho() { 
+            modalCarrinho.style.display = 'none'; 
+        }
+
+        function abrirModalLogin() { 
+            fecharModalCarrinho(); 
+            modalLogin.style.display = 'flex'; 
+            document.getElementById('input-telefone').focus(); 
+        }
+
+        function fecharModalLogin() { 
+            modalLogin.style.display = 'none'; 
+            abrirModalCarrinho(); 
+        }
+
+        function abrirModalEndereco() { 
+            fecharModalLogin(); 
+            fecharModalConfirmarDados(); 
+            modalEndereco.style.display = 'flex'; 
+            document.getElementById('input-contato-endereco').value = clienteAtual.telefoneFormatado; 
+            document.getElementById('input-nome').focus(); 
+        }
+
+        function fecharModalEndereco() { 
+            modalEndereco.style.display = 'none'; 
+            // Se veio da confirmação de dados, volta pra lá
+            if (clienteAtual && clienteAtual.endereco) {
+                abrirModalConfirmarDados(clienteAtual);
+            } else {
+                abrirModalLogin();
+            }
+        }
+
+        function abrirModalPagamento() { 
+            fecharModalLogin(); 
+            fecharModalEndereco(); 
+            fecharModalConfirmarDados(); 
+            modalPagamento.style.display = 'flex'; 
+        }
+
+        function fecharModalPagamento() { 
+            modalPagamento.style.display = 'none'; 
+            // Volta para a tela apropriada baseada no estado
+            if (document.getElementById('input-nome').value) {
+                abrirModalEndereco();
+            } else if (clienteAtual && clienteAtual.endereco) {
+                abrirModalConfirmarDados(clienteAtual);
+            } else {
+                abrirModalLogin();
+            }
+        }
+
         function abrirModalConfirmarDados(cliente) {
             fecharModalLogin();
             const dadosContainer = document.getElementById('dados-confirmacao');
@@ -448,7 +497,11 @@
             `;
             modalConfirmarDados.style.display = 'flex';
         }
-        function fecharModalConfirmarDados() { modalConfirmarDados.style.display = 'none'; }
+
+        function fecharModalConfirmarDados() { 
+            modalConfirmarDados.style.display = 'none'; 
+            abrirModalLogin();
+        }
         
         async function verificarTelefone() {
             const telefoneInput = document.getElementById('input-telefone');
@@ -652,7 +705,9 @@
             document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
             document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
             document.getElementById('btn-confirmar-pagamento').addEventListener('click', finalizarPedidoComPagamento);
-            document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
+            document.getElementById('btn-voltar-etapa').onclick = function() {
+                fecharModalPagamento();
+            };
             document.getElementById('btn-novo-pedido').addEventListener('click', fecharModalConfirmacao);
             document.querySelector('#modalConfirmacao .btn-secondary').addEventListener('click', voltarAoSite);
             
