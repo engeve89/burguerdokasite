@@ -45,7 +45,7 @@ app.use(express.static('public'));
 
 const apiLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,
-	max: 100, // Aumentado para valor mais razoável
+	max: 100,
 	standardHeaders: true,
 	legacyHeaders: false,
     message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
@@ -88,17 +88,14 @@ async function setupDatabase() {
 }
 
 // ==================================================================
-// INÍCIO DA LÓGICA DE WHATSAPP ESTÁVEL (DA VERSÃO CORRIGIDA)
+// LÓGICA DE WHATSAPP ESTÁVEL E COM RECONEXÃO AUTOMÁTICA
 // ==================================================================
 let client;
 let whatsappStatus = 'initializing';
 let isInitializing = false;
 
 async function initializeWhatsApp() {
-    if (isInitializing) {
-        logger.info('Inicialização do WhatsApp já em andamento. Aguardando...');
-        return;
-    }
+    if (isInitializing) return;
     isInitializing = true;
     whatsappStatus = 'initializing';
     logger.info('Iniciando processo de inicialização do WhatsApp...');
@@ -149,12 +146,8 @@ async function initializeWhatsApp() {
         isInitializing = false;
     }
 }
-// ==================================================================
-// FIM DA LÓGICA DE WHATSAPP ESTÁVEL
-// ==================================================================
 
-
-// --- Funções Auxiliares Completas ---
+// --- Funções Auxiliares ---
 function normalizarTelefone(telefone) {
     if (typeof telefone !== 'string') return null;
     let limpo = telefone.replace(/\D/g, '');
@@ -260,12 +253,10 @@ app.post('/api/criar-pedido', async (req, res) => {
     let clientDB;
     try {
         // ==================================================================
-        // INÍCIO DA CORREÇÃO FINAL E DEFINITIVA DE SQL (DA VERSÃO CORRIGIDA)
+        // INÍCIO DA CORREÇÃO FINAL E DEFINITIVA DE SQL
         // ==================================================================
         const cleanInput = (input) => {
-            if (typeof input !== 'string' || !input) {
-                return null;
-            }
+            if (typeof input !== 'string' || !input) return null;
             return input.replace(/\s+/g, ' ').trim();
         };
 
@@ -315,7 +306,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ success: false, message: "Ocorreu um erro inesperado no servidor." });
 });
 
-// --- INICIALIZAÇÃO SEGURA DO SERVIDOR (DA VERSÃO CORRIGIDA) ---
+// --- INICIALIZAÇÃO SEGURA DO SERVIDOR ---
 async function startServer() {
     try {
         await setupDatabase();
