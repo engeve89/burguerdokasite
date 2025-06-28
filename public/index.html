@@ -99,24 +99,26 @@
         .info-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
         .success-box { background-color: #FFF3E0; padding: 15px; border-radius: 10px; margin: 15px 0; }
         
-        /* Regras para telas menores - NOVO */
-        @media screen and (max-width: 480px) {
-            .modal-content {
-                padding: 20px;
-            }
-            .confirmacao-content h2 {
-                font-size: 22px; /* Reduz o tamanho do título */
-            }
-            .emoji-header {
-                font-size: 50px; /* Reduz o tamanho do emoji */
+        .modal-header button {
+            padding: 8px !important;
+            line-height: 1;
+        }
+
+        @media (max-width: 500px) {
+            .modal-content.confirmacao-content {
+                max-width: 95% !important;
+                padding: 15px !important;
             }
             .codigo-entrega {
-                font-size: 26px; /* Reduz o código de entrega */
-                padding: 12px;
+                font-size: 20px !important;
+                padding: 10px !important;
                 letter-spacing: 3px;
             }
-            .confirmacao-content p {
-                font-size: 15px; /* Ajusta o texto */
+            .emoji-header {
+                font-size: 40px !important;
+            }
+            .confirmacao-content h2 {
+                font-size: 22px !important;
             }
         }
     </style>
@@ -147,7 +149,12 @@
     
     <div id="modalCarrinho" class="modal">
          <div class="modal-content">
-            <div class="modal-header"><h2>Meu Carrinho</h2><button id="fechar-carrinho-btn" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button></div>
+            <div class="modal-header">
+                <h2>Meu Carrinho</h2>
+                <button onclick="fecharModalCarrinho()" style="background:none; border:none; font-size: 24px; cursor:pointer; padding: 8px;">
+                    &times;
+                </button>
+            </div>
             <div id="carrinho-itens"></div>
             <div class="carrinho-footer">
                 <div class="carrinho-resumo">
@@ -155,7 +162,9 @@
                     <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
                 </div>
                 <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
-                <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
+                <div class="carrinho-actions">
+                    <button id="btn-finalizar-pedido">Finalizar Pedido</button>
+                </div>
             </div>
         </div>
     </div>
@@ -168,7 +177,10 @@
                 <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
                 <small style="color: #666;">Digite 10 ou 11 números: DDD + Telefone.</small>
             </div>
-            <div class="form-actions"><button id="btn-continuar-login" class="btn-primary">Continuar</button><button id="btn-voltar-carrinho" class="btn-secondary">Voltar ao Carrinho</button></div>
+            <div class="form-actions">
+                <button id="btn-continuar-login" class="btn-primary">Continuar</button>
+                <button onclick="fecharModalLogin()" class="btn-secondary">Voltar ao Carrinho</button>
+            </div>
         </div>
     </div>
     
@@ -313,7 +325,7 @@
             // Burgers 180g
             { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
-            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
+            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
             { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
             { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
@@ -327,7 +339,7 @@
             { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
             { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
 
-            // Lanches de Frango
+            // Frango
             { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
             
             // Combos
@@ -343,7 +355,7 @@
             { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
             { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
             { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
-            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avf', categoria: 'Bebidas' },
             { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
         ];
 
@@ -357,9 +369,9 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                    <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                    <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                 </div>`;
+                                     <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                     <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                   </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
@@ -447,21 +459,36 @@
             btnContinuar.disabled = true;
             btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
-            // Simulação de API - substitua pela sua lógica real
-            setTimeout(() => {
-                clienteAtual = { telefone: telefoneLimpo, telefoneFormatado: telefoneCru };
-                // Simulando um novo cliente para teste
-                const isNew = !localStorage.getItem(telefoneLimpo); 
-                if (isNew) {
-                    abrirModalEndereco();
-                } else {
-                    const dadosSalvos = JSON.parse(localStorage.getItem(telefoneLimpo));
-                    clienteAtual = { ...clienteAtual, ...dadosSalvos };
-                    abrirModalConfirmarDados(clienteAtual);
+            try {
+                const response = await fetch('/api/identificar-cliente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telefone: telefoneCru })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    alert(errorData.message || "Ocorreu um erro no servidor.");
+                    throw new Error(`Erro do Servidor: ${response.statusText}`);
                 }
+                const data = await response.json();
+                if (data.success) {
+                    clienteAtual = data.cliente;
+                    clienteAtual.telefoneFormatado = telefoneCru;
+                    if (data.isNew) {
+                        abrirModalEndereco();
+                    } else {
+                        abrirModalConfirmarDados(clienteAtual);
+                    }
+                } else {
+                    alert(data.message || "Não foi possível validar seu número. Tente novamente.");
+                }
+            } catch (error) {
+                console.error("Erro de rede ao verificar telefone:", error);
+                alert("Não foi possível conectar ao nosso sistema. Verifique sua conexão e tente novamente.");
+            } finally {
                 btnContinuar.disabled = false;
                 btnContinuar.textContent = 'Continuar';
-            }, 1000);
+            }
         }
 
         function salvarEndereco() {
@@ -471,8 +498,6 @@
             clienteAtual.nome = nome;
             clienteAtual.endereco = endereco;
             clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
-            // Salva no localStorage para simulação
-            localStorage.setItem(clienteAtual.telefone, JSON.stringify({ nome: clienteAtual.nome, endereco: clienteAtual.endereco, referencia: clienteAtual.referencia }));
             abrirModalPagamento();
         }
         
@@ -501,19 +526,38 @@
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
             
-            // Simulação de envio
-            setTimeout(() => {
-                const numeroPedido = `WEB-${Math.floor(1000 + Math.random() * 9000)}`;
-                const codigoEntrega = clienteAtual.telefone.slice(-4);
-                document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
-                document.getElementById('numero-pedido').textContent = numeroPedido;
-                document.getElementById('codigo-entrega').textContent = codigoEntrega;
-                fecharModalPagamento();
-                modalConfirmacao.style.display = 'flex';
-                
+            const dadosDoPedido = {
+                carrinho: carrinho,
+                cliente: clienteAtual,
+                pagamento: metodoPagamentoSelecionado,
+                troco: metodoPagamentoSelecionado === 'Dinheiro' ? document.getElementById('troco-input').value || null : null
+            };
+
+            try {
+                const response = await fetch('/api/criar-pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dadosDoPedido)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    const numeroPedido = `WEB-${Math.floor(1000 + Math.random() * 9000)}`;
+                    const codigoEntrega = clienteAtual.telefone.slice(-4);
+                    document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
+                    document.getElementById('numero-pedido').textContent = numeroPedido;
+                    document.getElementById('codigo-entrega').textContent = codigoEntrega;
+                    fecharModalPagamento();
+                    modalConfirmacao.style.display = 'flex';
+                } else {
+                    alert(`Erro ao enviar o pedido: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Erro de rede:", error);
+                alert("Não foi possível conectar ao nosso servidor. Verifique sua conexão e tente novamente.");
+            } finally {
                 btnConfirmar.disabled = false;
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
-            }, 1500);
+            }
         }
 
         function fecharModalConfirmacao() {
@@ -598,9 +642,6 @@
                 } 
             });
             
-            // Event Listeners dos botões dos modais - NOVO/ATUALIZADO
-            document.getElementById('fechar-carrinho-btn').addEventListener('click', fecharModalCarrinho);
-            document.getElementById('btn-voltar-carrinho').addEventListener('click', fecharModalLogin);
             document.getElementById('btn-finalizar-pedido').addEventListener('click', abrirModalLogin);
             document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
             document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
