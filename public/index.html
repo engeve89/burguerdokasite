@@ -50,6 +50,7 @@
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 999; align-items: center; justify-content: center; }
         
+        /* ALTERAÇÃO APLICADA: Barra de rolagem adicionada aqui */
         .modal-content {
             background: white;
             padding: 25px;
@@ -60,8 +61,8 @@
             animation: modalFadeIn 0.3s;
             display: flex;
             flex-direction: column;
-            max-height: 80vh;
-            overflow-y: auto; /* <-- CORREÇÃO APLICADA AQUI */
+            max-height: 85vh; /* Aumentado um pouco para dar mais espaço */
+            overflow-y: auto; /* Garante a barra de rolagem quando o conteúdo for maior */
         }
         
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
@@ -95,8 +96,6 @@
         .btn-primary { background: var(--laranja); color: var(--branco); margin-bottom: 8px; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%;}
         .btn-secondary { background: var(--cinza); color: var(--marrom); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
         
-        .btn-success { background: var(--verde); color: var(--branco); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
-
         #dados-confirmacao p { margin-bottom: 10px; background-color: #fafafa; padding: 10px; border-radius: 5px; text-align: left; }
         #dados-confirmacao p strong { color: var(--marrom); }
 
@@ -290,11 +289,7 @@
                 <button id="btn-novo-pedido" class="btn-primary">
                     🍔 Fazer Novo Pedido
                 </button>
-                <button onclick="voltarAoSite()" class="btn-success">
-                    ✅ Voltar ao Início
-                </button>
-            </div>
-
+                </div>
         </div>
     </div>
 
