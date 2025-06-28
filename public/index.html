@@ -17,7 +17,41 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
         body { background-color: var(--cinza); color: var(--marrom); padding-bottom: 80px; }
         
-        header { background: var(--marrom); color: var(--branco); padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        header {
+            background: var(--marrom);
+            color: var(--branco);
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            /* PROPRIEDADES ATUALIZADAS PARA O ALINHAMENTO */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Estilo aprimorado para o botão de Meus Pedidos */
+        #btn-meus-pedidos {
+            background: transparent; /* Fundo transparente */
+            border: 1px solid var(--laranja); /* Borda sutil na cor da marca */
+            color: var(--branco);
+            font-size: 14px; /* Fonte um pouco menor e mais delicada */
+            font-weight: bold;
+            cursor: pointer;
+            padding: 6px 12px; /* Espaçamento interno para não ficar "apertado" */
+            border-radius: 20px; /* Bordas arredondadas para combinar com os botões de categoria */
+            display: flex;
+            align-items: center;
+            gap: 8px; /* Espaço entre o ícone e o texto */
+            transition: background-color 0.3s, color 0.3s; /* Transição suave para o hover */
+        }
+
+        #btn-meus-pedidos:hover {
+            background-color: var(--laranja); /* Muda a cor de fundo no hover */
+            color: var(--marrom); /* Muda a cor do texto para um bom contraste */
+        }
+
         .logo { font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
         .logo span { color: var(--laranja); }
         .logo i { margin-right: 10px; color: var(--laranja); }
@@ -201,7 +235,7 @@
             <i class="fas fa-hamburger"></i>
             Doka<span>Burger</span>
         </div>
-        <button id="btn-meus-pedidos" style="background:none; border:none; color:white; font-size:16px; cursor:pointer; position: absolute; right: 15px; top: 20px;">
+        <button id="btn-meus-pedidos">
             <i class="fas fa-history"></i> Meus Pedidos
         </button>
     </header>
@@ -379,7 +413,7 @@
         <div class="modal-content" style="overflow-y: auto;">
             <div class="modal-header">
                 <h2>Meu Histórico de Pedidos</h2>
-                <button onclick="fecharModalHistorico()" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
+                <button id="btn-fechar-historico" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
             </div>
             <div id="historico-container">
                 <p>Para ver seu histórico, precisamos do seu WhatsApp.</p>
@@ -954,6 +988,9 @@
                 fecharModalHistorico();
                 abrirModalLogin(); 
             });
+
+            // LÓGICA CORRIGIDA PARA O BOTÃO FECHAR DO MODAL HISTÓRICO
+            document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico);
         }
 
         inicializar();
