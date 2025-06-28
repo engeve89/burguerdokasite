@@ -19,17 +19,16 @@ const logger = {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Informa ao Express para confiar no proxy do Render.
+// Informa ao Express para confiar no proxy do Render (ou outro serviço de hospedagem)
 app.set('trust proxy', 1);
 
 // --- Middlewares de Segurança e Funcionalidade ---
 
-// CORRIGIDO: Política de Segurança de Conteúdo restaurada para a original
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], 
+      scriptSrc: ["'self'", "'unsafe-inline'"],  
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
       imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
@@ -41,7 +40,7 @@ app.use(
   })
 );
 
-app.disable('x-powered-by'); 
+app.disable('x-powered-by');  
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
@@ -83,7 +82,7 @@ async function setupDatabase() {
             );
         `);
         
-        // CORRIGIDO: Tabela de pedidos com todas as colunas originais
+        // Tabela de pedidos
         await clientDB.query(`
             CREATE TABLE IF NOT EXISTS pedidos (
                 id SERIAL PRIMARY KEY,
@@ -116,7 +115,6 @@ const client = new Client({
 
 // --- Funções Auxiliares Completas ---
 
-// CORRIGIDO: Função de normalização de telefone restaurada
 function normalizarTelefone(telefone) {
   if (typeof telefone !== 'string') return null;
   let limpo = telefone.replace(/\D/g, '');
@@ -126,7 +124,6 @@ function normalizarTelefone(telefone) {
   return `55${limpo}`;
 }
 
-// CORRIGIDO: Função `gerarCupomFiscal` restaurada
 function gerarCupomFiscal(pedido) {
     const { cliente, carrinho, pagamento, troco } = pedido;
     const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
@@ -158,7 +155,7 @@ function gerarCupomFiscal(pedido) {
         cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace('.',',')})\n`;
     }
     cupom += `==================================================\n`;
-    cupom += `            OBRIGADO PELA PREFERENCIA!`;
+    cupom += `           OBRIGADO PELA PREFERENCIA!`;
     return cupom;
 }
 
@@ -244,7 +241,9 @@ app.post('/api/identificar-cliente', async (req, res) => {
     }
 });
 
-// CORRIGIDO: Rota `/api/criar-pedido` com toda a lógica restaurada
+// ==============================================================================
+// ROTA ATUALIZADA
+// ==============================================================================
 app.post('/api/criar-pedido', async (req, res) => {
     if (whatsappStatus !== 'ready') { return res.status(503).json({ success: false, message: "Servidor de WhatsApp iniciando. Tente em instantes." }); }
     
@@ -256,6 +255,12 @@ app.post('/api/criar-pedido', async (req, res) => {
         return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
     }
     
+    // --- CORREÇÃO APLICADA AQUI ---
+    // Adiciona o telefone formatado (com máscara) ao objeto do pedido para uso no cupom.
+    // O frontend envia o telefone cru, então usamos ele para exibição.
+    pedido.cliente.telefoneFormatado = cliente.telefone; 
+    // --- FIM DA CORREÇÃO ---
+
     const numeroClienteParaApi = `${telefoneNormalizado.substring(2)}@c.us`;
     let clientDB;
     try {
@@ -277,7 +282,7 @@ app.post('/api/criar-pedido', async (req, res) => {
         const pedidoId = resultPedido.rows[0].id;
         logger.info(`Pedido #${pedidoId} registrado no banco de dados.`);
         
-        // Enviar cupom fiscal imediatamente
+        // Agora o cupom fiscal será gerado com o telefone correto
         const cupomFiscal = gerarCupomFiscal(pedido);
         await client.sendMessage(numeroClienteParaApi, cupomFiscal);
         logger.info(`✅ Cupom enviado para ${numeroClienteParaApi}`);
@@ -299,6 +304,9 @@ app.post('/api/criar-pedido', async (req, res) => {
         if(clientDB) clientDB.release();
     }
 });
+// ==============================================================================
+// FIM DA ROTA ATUALIZADA
+// ==============================================================================
 
 // Rota para buscar o histórico de pedidos
 app.get('/api/historico/:telefone', async (req, res) => {
