@@ -49,28 +49,24 @@
         @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 999; align-items: center; justify-content: center; }
-        
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
-            animation: modalFadeIn 0.3s;
-            display: flex;
-            flex-direction: column;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-        
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s; display: flex; flex-direction: column; max-height: 80vh; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
+        
+        .btn-fechar-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
         
         #carrinho-itens { overflow-y: auto; flex-grow: 1; padding-right: 10px; }
         .carrinho-item { display: flex; flex-direction: column; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .carrinho-item-header { display: flex; align-items: center; width: 100%; }
-        .carrinho-item-info { flex-grow: 1; } 
-        .carrinho-item-info p { font-size: 14px; color: #666; }
+        .carrinho-item-info { flex-grow: 1; } .carrinho-item-info p { font-size: 14px; color: #666; }
         .quantidade-controls { display: flex; align-items: center; margin: 0 10px; }
         .quantidade-controls button { background: var(--cinza); border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; cursor: pointer; }
         .quantidade-controls span { margin: 0 12px; font-size: 16px; }
@@ -104,54 +100,7 @@
         .troco-container { margin-top: 10px; display: none; }
         .troco-calculado { background-color: #FFF9E6; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
         
-        /* NOVOS ESTILOS PARA MODAL DE CONFIRMAÇÃO */
-        .confirmacao-content {
-            position: relative;
-            max-height: 65vh;
-            overflow-y: auto;
-            padding-right: 15px;
-        }
-        
-        .scroll-controls {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 100;
-        }
-
-        .scroll-btn {
-            background: var(--laranja);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        .confirmacao-content::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .confirmacao-content::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        
-        .confirmacao-content::-webkit-scrollbar-thumb {
-            background: var(--laranja);
-            border-radius: 4px;
-        }
-
+        .confirmacao-content { text-align: center; }
         .confirmacao-content h2 { font-size: 28px; color: var(--marrom); margin-bottom: 15px; }
         .confirmacao-content p { margin: 15px 0; font-size: 16px; color: #333; }
         .codigo-entrega-container { margin: 20px 0; }
@@ -186,27 +135,31 @@
         <div class="carrinho-contador">0</div>
     </button>
     
+    <!-- Modal Carrinho -->
     <div id="modalCarrinho" class="modal">
          <div class="modal-content">
-             <div class="modal-header">
-                 <h2>Meu Carrinho</h2>
-             </div>
-             <div id="carrinho-itens"></div>
-             <div class="carrinho-footer">
-                 <div class="carrinho-resumo">
-                     <div><span>Subtotal</span><span id="carrinho-subtotal">R$ 0,00</span></div>
-                     <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
-                 </div>
-                 <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
-                 <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
-             </div>
-         </div>
+            <div class="modal-header">
+                <h2>Meu Carrinho</h2>
+                <button class="btn-fechar-modal" onclick="fecharModalCarrinho()">&times;</button>
+            </div>
+            <div id="carrinho-itens"></div>
+            <div class="carrinho-footer">
+                <div class="carrinho-resumo">
+                    <div><span>Subtotal</span><span id="carrinho-subtotal">R$ 0,00</span></div>
+                    <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
+                </div>
+                <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
+                <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
+            </div>
+        </div>
     </div>
     
+    <!-- Modal Login -->
     <div id="modalLogin" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Identificação</h2>
+                <button class="btn-fechar-modal" onclick="fecharModalLogin()">&times;</button>
             </div>
             <div class="form-group">
                 <label for="input-telefone">Seu WhatsApp (apenas números)</label>
@@ -217,10 +170,12 @@
         </div>
     </div>
     
+    <!-- Modal Confirmar Dados -->
     <div id="modalConfirmarDados" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Confirme seus Dados</h2>
+                <button class="btn-fechar-modal" onclick="fecharModalConfirmarDados()">&times;</button>
             </div>
             <p>Olá de novo! Encontramos seu cadastro. Os dados abaixo estão corretos?</p>
             <div id="dados-confirmacao"></div>
@@ -231,10 +186,12 @@
         </div>
     </div>
     
+    <!-- Modal Endereço -->
     <div id="modalEndereco" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Onde será a entrega?</h2>
+                <button class="btn-fechar-modal" onclick="fecharModalEndereco()">&times;</button>
             </div>
             <p style="margin-bottom: 15px; font-size: 14px; color: #666;">Como é sua primeira vez (ou você pediu para editar), precisamos do seu endereço.</p>
             <div class="form-group"><label>Contato (WhatsApp)</label><input type="tel" id="input-contato-endereco" readonly></div>
@@ -245,10 +202,12 @@
         </div>
     </div>
     
+    <!-- Modal Pagamento -->
     <div id="modalPagamento" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>💰 Forma de Pagamento</h2>
+                <button class="btn-fechar-modal" onclick="fecharModalPagamento()">&times;</button>
             </div>
             
             <div class="metodo-pagamento" data-metodo="Dinheiro">
@@ -305,18 +264,10 @@
         </div>
     </div>
     
+    <!-- Modal Confirmação -->
     <div id="modalConfirmacao" class="modal">
         <div class="modal-content confirmacao-content">
-            <!-- Controles de rolagem adicionados aqui -->
-            <div class="scroll-controls">
-                <button class="scroll-btn" id="btn-scroll-up" title="Subir">
-                    <i class="fas fa-chevron-up"></i>
-                </button>
-                <button class="scroll-btn" id="btn-scroll-down" title="Descer">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-            </div>
-            
+            <button class="btn-fechar-modal" onclick="fecharModalConfirmacao()">&times;</button>
             <div class="emoji-header">🍔🎉🚀</div>
             <h2>Pedido Confirmado! 🛵</h2>
             
@@ -341,9 +292,12 @@
                 <p>🍟 Seu lanche está a caminho! Agradecemos pela preferência! ❤️</p>
             </div>
             
-            <div class="form-actions" style="margin-top: 20px;">
-                <button id="btn-novo-pedido" class="btn-primary">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="btn-novo-pedido" class="btn-primary" style="flex: 1;">
                     🍔 Fazer Novo Pedido
+                </button>
+                <button onclick="fecharModalConfirmacao()" class="btn-secondary" style="flex: 1;">
+                    ↩️ Voltar ao Site
                 </button>
             </div>
         </div>
@@ -373,7 +327,41 @@
         let metodoPagamentoSelecionado = null;
         
         const cardapioDB = [
-            // ... (cardápio mantido igual ao original) ...
+            // Burgers 180g
+            { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
+            { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
+            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
+            { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
+            { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
+            { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
+            
+            // Burgers 120g
+            { id: 'b12_1', nome: 'Doka Burguer 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cheese-burguer-doka.jpg', categoria: 'Burgers 120g' },
+            { id: 'b12_3', nome: 'Doka Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_4', nome: 'Doka Salada 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, alface ou rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_5', nome: 'Dokinha cheese Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/smash-cheese-bacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_9', nome: 'Doka Classic Burguer', preco: 28.90, descricao: "Pão, 2 smash's 70g, 2 queijos cheddar, ketchup, mostarda, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-classic-burguer.jpg', categoria: 'Burgers 120g' },
+            { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
+
+            // Lanches de Frango
+            { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
+            
+            // Combos
+            { id: 'c1', nome: 'Combo Dokinha 01', preco: 44.90, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha01.avif', categoria: 'Combos' },
+            { id: 'c2', nome: 'Combo Dokinha Salada', preco: 48.60, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, cebola roxa, picles, alface, tomate, maionese + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha-salada.avif', categoria: 'Combos' },
+            { id: 'c3', nome: 'Combo Catubacon', preco: 54.99, descricao: 'Pão brioche, Hambúrguer 150g, Catupiry, bacon crocante, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-catubacon.jpg', categoria: 'Combos' },
+            { id: 'c4', nome: 'Combo Doka Casal Fit', preco: 69.99, descricao: '2x burguers clássicos (150g cada) + 2x Porções de batata (aprox. 100g cada) + 2x refri lata.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-doka-casal-fit.avif', categoria: 'Combos' },
+
+            // Bebidas
+            { id: 'b1', nome: 'Coca-Cola Original', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-lata350ml.avif', categoria: 'Bebidas' },
+            { id: 'b2', nome: 'Coca-Cola 1L', preco: 12.00, descricao: 'Garrafa 1L', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-cola-1litros.avif', categoria: 'Bebidas' },
+            { id: 'b3', nome: 'Guaraná Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-guaran%C3%A1-fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
         ];
 
         function carregarProdutos(categoriaSelecionada) {
@@ -386,9 +374,9 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                     <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                     <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                   </div>`;
+                                    <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                    <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                 </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
@@ -442,68 +430,14 @@
             }
         }
         
-        function abrirModalCarrinho() { 
-            modalCarrinho.style.display = 'flex'; 
-        }
-
-        function fecharModalCarrinho() { 
-            modalCarrinho.style.display = 'none'; 
-        }
-
-        function fecharTodosOsModais() {
-            document.querySelectorAll('.modal').forEach(modal => {
-                if (modal.id !== 'modalConfirmacao') {
-                    modal.style.display = 'none';
-                }
-            });
-        }
-
-        function abrirModalLogin() { 
-            fecharModalCarrinho(); 
-            modalLogin.style.display = 'flex'; 
-            document.getElementById('input-telefone').focus(); 
-        }
-
-        function fecharModalLogin() { 
-            modalLogin.style.display = 'none'; 
-            abrirModalCarrinho(); 
-        }
-
-        function abrirModalEndereco() { 
-            fecharModalLogin(); 
-            fecharModalConfirmarDados(); 
-            modalEndereco.style.display = 'flex'; 
-            document.getElementById('input-contato-endereco').value = clienteAtual.telefoneFormatado; 
-            document.getElementById('input-nome').focus(); 
-        }
-
-        function fecharModalEndereco() { 
-            modalEndereco.style.display = 'none'; 
-            if (clienteAtual && clienteAtual.endereco) {
-                abrirModalConfirmarDados(clienteAtual);
-            } else {
-                abrirModalLogin();
-            }
-        }
-
-        function abrirModalPagamento() { 
-            fecharModalLogin(); 
-            fecharModalEndereco(); 
-            fecharModalConfirmarDados(); 
-            modalPagamento.style.display = 'flex'; 
-        }
-
-        function fecharModalPagamento() { 
-            modalPagamento.style.display = 'none'; 
-            if (document.getElementById('input-nome').value) {
-                abrirModalEndereco();
-            } else if (clienteAtual && clienteAtual.endereco) {
-                abrirModalConfirmarDados(clienteAtual);
-            } else {
-                abrirModalLogin();
-            }
-        }
-
+        function abrirModalCarrinho() { modalCarrinho.style.display = 'flex'; }
+        function fecharModalCarrinho() { modalCarrinho.style.display = 'none'; }
+        function abrirModalLogin() { fecharModalCarrinho(); modalLogin.style.display = 'flex'; document.getElementById('input-telefone').focus(); }
+        function fecharModalLogin() { modalLogin.style.display = 'none'; abrirModalCarrinho(); }
+        function abrirModalEndereco() { fecharModalLogin(); fecharModalConfirmarDados(); modalEndereco.style.display = 'flex'; document.getElementById('input-contato-endereco').value = clienteAtual.telefoneFormatado; document.getElementById('input-nome').focus(); }
+        function fecharModalEndereco() { modalEndereco.style.display = 'none'; }
+        function abrirModalPagamento() { fecharModalLogin(); fecharModalEndereco(); fecharModalConfirmarDados(); modalPagamento.style.display = 'flex'; }
+        function fecharModalPagamento() { modalPagamento.style.display = 'none'; }
         function abrirModalConfirmarDados(cliente) {
             fecharModalLogin();
             const dadosContainer = document.getElementById('dados-confirmacao');
@@ -514,11 +448,7 @@
             `;
             modalConfirmarDados.style.display = 'flex';
         }
-
-        function fecharModalConfirmarDados() { 
-            modalConfirmarDados.style.display = 'none'; 
-            abrirModalLogin();
-        }
+        function fecharModalConfirmarDados() { modalConfirmarDados.style.display = 'none'; }
         
         async function verificarTelefone() {
             const telefoneInput = document.getElementById('input-telefone');
@@ -584,6 +514,7 @@
                 return; 
             }
             
+            // Validação do troco se for pagamento em dinheiro
             if (metodoPagamentoSelecionado === 'Dinheiro') {
                 const trocoInput = document.getElementById('troco-input');
                 const valorPedido = calcularTotalPedido();
@@ -614,17 +545,14 @@
                     document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
                     document.getElementById('numero-pedido').textContent = numeroPedido;
                     document.getElementById('codigo-entrega').textContent = codigoEntrega;
-                    fecharTodosOsModais();
+                    fecharModalPagamento();
                     modalConfirmacao.style.display = 'flex';
-                    
-                    // Rolagem automática para o topo ao abrir o modal
-                    document.querySelector('.confirmacao-content').scrollTo({ top: 0 });
                 } else { 
                     alert(`Erro ao enviar o pedido: ${result.message}`); 
                 }
             } catch (error) {
                 console.error("Erro de rede:", error);
-                alert("Não foi possível conectar ao nosso sistema. Verifique sua conexão e tente novamente.");
+                alert("Não foi possível conectar ao nosso servidor. Verifique sua conexão e tente novamente.");
             } finally {
                 btnConfirmar.disabled = false;
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
@@ -655,14 +583,7 @@
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
             
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', (event) => {
-                    if (event.target === modal) {
-                        fecharTodosOsModais();
-                    }
-                });
-            });
-            
+            // Event listeners para troco
             document.getElementById('troco-input').addEventListener('input', function() {
                 const trocoInput = parseFloat(this.value);
                 const valorPedido = calcularTotalPedido();
@@ -682,6 +603,7 @@
                 }
             });
 
+            // Outros event listeners
             const menuCategorias = document.querySelector('.menu-categorias');
             document.getElementById('btn-scroll-left').addEventListener('click', () => { menuCategorias.scrollLeft -= 150; });
             document.getElementById('btn-scroll-right').addEventListener('click', () => { menuCategorias.scrollLeft += 150; });
@@ -730,10 +652,9 @@
             document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
             document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
             document.getElementById('btn-confirmar-pagamento').addEventListener('click', finalizarPedidoComPagamento);
-            document.getElementById('btn-voltar-etapa').onclick = function() {
-                fecharModalPagamento();
-            };
+            document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
             document.getElementById('btn-novo-pedido').addEventListener('click', fecharModalConfirmacao);
+            document.querySelector('#modalConfirmacao .btn-secondary').addEventListener('click', voltarAoSite);
             
             document.querySelectorAll('.metodo-pagamento').forEach(metodo => { 
                 metodo.addEventListener('click', () => { 
@@ -759,31 +680,6 @@
                 document.getElementById('input-nome').value = clienteAtual.nome;
                 document.getElementById('input-endereco').value = clienteAtual.endereco;
                 document.getElementById('input-referencia').value = clienteAtual.referencia || '';
-            });
-
-            // Controles de rolagem no modal de confirmação
-            document.getElementById('btn-scroll-up').addEventListener('click', () => {
-                const content = document.querySelector('.confirmacao-content');
-                content.scrollBy({ top: -200, behavior: 'smooth' });
-            });
-
-            document.getElementById('btn-scroll-down').addEventListener('click', () => {
-                const content = document.querySelector('.confirmacao-content');
-                content.scrollBy({ top: 200, behavior: 'smooth' });
-            });
-
-            // Rolagem com teclado (opcional)
-            window.addEventListener('keydown', (e) => {
-                if (modalConfirmacao.style.display === 'flex') {
-                    const content = document.querySelector('.confirmacao-content');
-                    if (e.key === 'ArrowUp') {
-                        content.scrollBy({ top: -100, behavior: 'smooth' });
-                        e.preventDefault();
-                    } else if (e.key === 'ArrowDown') {
-                        content.scrollBy({ top: 100, behavior: 'smooth' });
-                        e.preventDefault();
-                    }
-                }
             });
         }
 
