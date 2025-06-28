@@ -19,6 +19,10 @@ const logger = {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Variáveis de estado para saúde do serviço
+let isDbReady = false;
+let whatsappStatus = 'initializing';
+
 app.set('trust proxy', 1);
 
 // Middlewares de Segurança
@@ -64,9 +68,7 @@ const pool = new Pool({
   max: 5
 });
 
-// ==================================================================
-// FUNÇÃO DE BANCO DE DADOS ATUALIZADA COM LOGS DE ERRO DETALHADOS
-// ==================================================================
+// FUNÇÃO DE BANCO DE DADOS ATUALIZADA COM LOGS DE ERRO DETALHADOS E CONTROLE DE ESTADO
 async function setupDatabase() {
     let clientDB;
     let retryCount = 0;
@@ -98,26 +100,26 @@ async function setupDatabase() {
                 logger.info('Tabela "clientes" já existe.');
             }
             logger.info('✅ Conexão com o banco de dados estabelecida com sucesso!');
-            return; // Sai da função se conectar com sucesso
+            isDbReady = true; // ATUALIZA O ESTADO GLOBAL
+            return;
         } catch (err) {
             retryCount++;
-            // LOG MELHORADO: Mostra a mensagem de erro específica do banco de dados
             logger.error(`Erro ao configurar banco (tentativa ${retryCount}/${maxRetries}): ${err.message}`);
-            console.error('Detalhes completos do erro de conexão:', err); // Loga o objeto de erro inteiro
+            console.error('Detalhes completos do erro de conexão:', err);
             
             if (retryCount < maxRetries) {
                 await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+            } else {
+                 throw new Error('Falha ao configurar o banco de dados após várias tentativas');
             }
         } finally {
             if (clientDB) clientDB.release();
         }
     }
-    throw new Error('Falha ao configurar o banco de dados após várias tentativas');
 }
 
 // Lógica do WhatsApp estável e com reconexão automática
 let client;
-let whatsappStatus = 'initializing';
 let isInitializing = false;
 
 async function initializeWhatsApp() {
@@ -131,27 +133,14 @@ async function initializeWhatsApp() {
 
     try {
         if (client) {
-            logger.info('Destruindo cliente WhatsApp antigo para evitar duplicidade...');
             await client.destroy();
             client = null;
-            logger.info('Cliente antigo destruído com sucesso.');
         }
 
         client = new Client({
-            authStrategy: new LocalAuth({
-                dataPath: './whatsapp-sessions'
-            }),
+            authStrategy: new LocalAuth({ dataPath: './whatsapp-sessions' }),
             puppeteer: {
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                    '--disable-gpu'
-                ],
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process', '--disable-gpu'],
                 headless: true,
                 executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
             },
@@ -165,13 +154,6 @@ async function initializeWhatsApp() {
             whatsappStatus = 'qr_pending';
             logger.info('Gerando QR Code...');
             qrcode.generate(qr, { small: true });
-            const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
-            logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
-        });
-
-        client.on('authenticated', () => {
-            whatsappStatus = 'authenticated';
-            logger.info('Autenticação WhatsApp realizada com sucesso!');
         });
 
         client.on('ready', () => {
@@ -179,23 +161,15 @@ async function initializeWhatsApp() {
             logger.info('✅ Cliente WhatsApp pronto para uso!');
         });
 
-        client.on('auth_failure', msg => {
-            whatsappStatus = 'auth_failed';
-            logger.error(`Falha na autenticação: ${msg}. Tentando reinicializar em 60s.`);
-            setTimeout(initializeWhatsApp, 60000); 
-        });
-
         client.on('disconnected', (reason) => {
             whatsappStatus = 'disconnected';
-            logger.error(`WhatsApp desconectado: ${reason}. Tentando reconectar em 20s...`);
+            logger.error(`WhatsApp desconectado: ${reason}. Tentando reconectar...`);
             setTimeout(initializeWhatsApp, 20000);
         });
 
         await client.initialize();
-
     } catch (err) {
         logger.error(`Falha grave durante a inicialização do WhatsApp: ${err}`);
-        logger.info('Tentando reinicializar em 30s...');
         setTimeout(initializeWhatsApp, 30000);
     } finally {
         isInitializing = false;
@@ -217,30 +191,22 @@ function gerarCupomFiscal(pedido) {
     const taxaEntrega = 5.00;
     const total = subtotal + taxaEntrega;
     const now = new Date();
-
-    const options = {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-    };
+    const options = { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
     const formatter = new Intl.DateTimeFormat('pt-BR', options);
-    const dataHoraLocal = formatter.format(now);
-    const [dataLocal, horaLocal] = dataHoraLocal.split(', ');
+    const [dataLocal, horaLocal] = formatter.format(now).split(', ');
 
     let cupom = `================================\n`;
     cupom += `      Doka Burger - Pedido\n`;
-    cupom += `   ${dataLocal} às ${horaLocal.substring(0, 5)}\n`;
+    cupom += `   ${dataLocal} às ${horaLocal}\n`;
     cupom += `================================\n`;
     cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
     cupom += `*ITENS DO PEDIDO:*\n`;
-    
     carrinho.forEach(item => {
         const nomeFormatado = item.nome.padEnd(20, ' ');
         const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
         cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
         if (item.observacao) cupom += `  Obs: ${item.observacao}\n`;
     });
-    
     cupom += `------------------------------------------------\n`;
     cupom += `Subtotal:      R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
     cupom += `Taxa de Entrega: R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
@@ -255,30 +221,32 @@ function gerarCupomFiscal(pedido) {
     }
     cupom += `================================\n`;
     cupom += `      OBRIGADO PELA PREFERÊNCIA!`;
-    
     return cupom;
 }
 
 // Rotas da API
-app.get('/health', async (req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({
-      status: 'healthy',
-      whatsapp: whatsappStatus,
-      database: 'connected',
-      uptime: process.uptime()
-    });
-  } catch (err) {
-    res.status(500).json({ status: 'unhealthy', error: err.message, whatsapp: whatsappStatus, database: 'disconnected' });
-  }
+app.get('/health', (req, res) => {
+    const dbStatus = isDbReady ? 'connected' : 'connecting_or_failed';
+    res.json({
+        status: isDbReady && whatsappStatus === 'ready' ? 'healthy' : 'degraded',
+        whatsapp: whatsappStatus,
+        database: dbStatus,
+        uptime: process.uptime()
+    });
 });
 
-app.post('/api/identificar-cliente', async (req, res) => {
-  if (whatsappStatus !== 'ready') {
-    return res.status(503).json({ success: false, message: "Servidor de WhatsApp indisponível. Tente em instantes." });
-  }
-  
+// Middleware para checar a prontidão dos serviços nas rotas críticas
+function checkServicesReady(req, res, next) {
+    if (!isDbReady) {
+        return res.status(503).json({ success: false, message: "Serviço indisponível, o banco de dados não está conectado. Tente novamente em instantes." });
+    }
+    if (whatsappStatus !== 'ready') {
+        return res.status(503).json({ success: false, message: "Serviço indisponível, o WhatsApp não está conectado. Tente novamente em instantes." });
+    }
+    next();
+}
+
+app.post('/api/identificar-cliente', checkServicesReady, async (req, res) => {
   const { telefone } = req.body;
   const telefoneNormalizado = normalizarTelefone(telefone);
 
@@ -299,11 +267,8 @@ app.post('/api/identificar-cliente', async (req, res) => {
     const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneNormalizado]);
     
     if (result.rows.length > 0) {
-      const clienteEncontrado = result.rows[0];
-      logger.info(`Cliente encontrado: ${clienteEncontrado.nome}`);
-      res.json({ success: true, isNew: false, cliente: clienteEncontrado });
+      res.json({ success: true, isNew: false, cliente: result.rows[0] });
     } else {
-      logger.info(`Novo cliente: ${telefoneNormalizado}`);
       res.json({ success: true, isNew: true, cliente: { telefone: telefoneNormalizado } });
     }
   } catch (error) {
@@ -314,11 +279,7 @@ app.post('/api/identificar-cliente', async (req, res) => {
   }
 });
 
-app.post('/api/criar-pedido', async (req, res) => {
-  if (whatsappStatus !== 'ready') {
-    return res.status(503).json({ success: false, message: "Servidor de WhatsApp indisponível. Tente em instantes." });
-  }
-  
+app.post('/api/criar-pedido', checkServicesReady, async (req, res) => {
   const pedido = req.body;
   const cliente = pedido.cliente;
   const telefoneNormalizado = normalizarTelefone(cliente.telefoneFormatado);
@@ -332,7 +293,6 @@ app.post('/api/criar-pedido', async (req, res) => {
   
   try {
     clientDB = await pool.connect();
-    
     await clientDB.query(`
         INSERT INTO clientes (telefone, nome, endereco, referencia) 
         VALUES ($1, $2, $3, $4)
@@ -341,30 +301,20 @@ app.post('/api/criar-pedido', async (req, res) => {
             endereco = EXCLUDED.endereco, 
             referencia = EXCLUDED.referencia;
     `, [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]);
-    logger.info(`Cliente cadastrado/atualizado: ${cliente.nome}`);
 
     const cupom = gerarCupomFiscal(pedido);
     await client.sendMessage(numeroCliente, cupom);
     logger.info(`Cupom enviado para ${numeroCliente}`);
     
-    setTimeout(async () => {
-      try {
-        await client.sendMessage(numeroCliente, `✅ PEDIDO CONFIRMADO! 🚀\nSeu pedido está sendo preparado! 😋️🍔\n\n⏱ *Tempo estimado:* 40-50 minutos\n📱 *Avisaremos quando sair para entrega!`);
-      } catch (err) {
-        logger.error(`Erro ao enviar mensagem de confirmação: ${err.message}`);
-      }
+    setTimeout(() => {
+      client.sendMessage(numeroCliente, `✅ PEDIDO CONFIRMADO! 🚀\nSeu pedido está sendo preparado! 😋️🍔\n\n⏱ *Tempo estimado:* 40-50 minutos\n📱 *Avisaremos quando sair para entrega!`).catch(err => logger.error(`Erro ao enviar msg de confirmação: ${err.message}`));
     }, 30000);
 
-    setTimeout(async () => {
-      try {
-        await client.sendMessage(numeroCliente, `🛵 *SEU PEDIDO ESTÁ A CAMINHO!* 🔔\nChegará em 10-15 minutos!\n\n_Se já recebeu, ignore esta mensagem._`);
-      } catch (err) {
-        logger.error(`Erro ao enviar mensagem de "a caminho": ${err.message}`);
-      }
+    setTimeout(() => {
+      client.sendMessage(numeroCliente, `🛵 *SEU PEDIDO ESTÁ A CAMINHO!* 🔔\nChegará em 10-15 minutos!\n\n_Se já recebeu, ignore esta mensagem._`).catch(err => logger.error(`Erro ao enviar msg de "a caminho": ${err.message}`));
     }, 1800000);
 
     res.status(200).json({ success: true });
-    
   } catch (error) {
     logger.error(`Erro no processamento do pedido: ${error.message}`);
     res.status(500).json({ success: false, message: "Falha ao processar o pedido." });
@@ -384,21 +334,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Ocorreu um erro inesperado no servidor." });
 });
 
-// Inicialização segura do servidor
-async function startServer() {
-  try {
-    await setupDatabase();
-    initializeWhatsApp();
-    
-    app.listen(PORT, () => {
-      logger.info(`🚀 Servidor rodando na porta ${PORT}`);
-      logger.info(`🔗 Acesse: http://localhost:${PORT}`);
-    });
-    
-  } catch (err) {
-    logger.error('Falha crítica ao iniciar o servidor:', err);
-    process.exit(1);
-  }
+// INICIALIZAÇÃO SEGURA E ROBUSTA DO SERVIDOR
+function startServer() {
+    app.listen(PORT, () => {
+        logger.info(`🚀 Servidor rodando e ouvindo na porta ${PORT}`);
+        
+        // Agora que o servidor está online, tentamos conectar aos serviços dependentes.
+        logger.info('Servidor online. Iniciando conexões com Banco de Dados e WhatsApp...');
+        
+        setupDatabase().catch(err => {
+            logger.error('Falha final e crítica na configuração do banco de dados. O servidor continuará rodando, mas as rotas de API falharão.');
+        });
+
+        initializeWhatsApp();
+    });
+
+    app.on('error', (err) => {
+        logger.error('Erro geral no servidor Express:', err);
+        process.exit(1); // Encerra se o próprio servidor Express falhar
+    });
 }
 
 startServer();
