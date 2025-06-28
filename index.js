@@ -150,10 +150,17 @@ async function initializeWhatsApp() {
             }
         });
 
+        // ==================================================================
+        // LINK DO QRCODE RESTAURADO AQUI
+        // ==================================================================
         client.on('qr', qr => {
             whatsappStatus = 'qr_pending';
             logger.info('Gerando QR Code...');
             qrcode.generate(qr, { small: true });
+            
+            // LINHAS RESTAURADAS:
+            const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+            logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
         });
 
         client.on('ready', () => {
