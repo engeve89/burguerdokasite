@@ -23,12 +23,30 @@
         .logo i { margin-right: 10px; color: var(--laranja); }
         
         .menu-container { display: flex; align-items: center; background: var(--branco); position: sticky; top: 60px; z-index: 90; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .menu-nav-btn { background: none; border: none; font-size: 24px; color: var(--laranja); cursor: pointer; padding: 0 10px; }
         .menu-categorias { flex-grow: 1; display: flex; overflow-x: auto; scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none; }
         .menu-categorias::-webkit-scrollbar { display: none; }
         .categoria-btn { padding: 12px 15px; margin: 8px 5px; background: var(--cinza); border: none; border-radius: 20px; font-weight: bold; white-space: nowrap; cursor: pointer; font-size: 14px; transition: all 0.2s; }
         .categoria-btn.ativo { background: var(--laranja); color: var(--branco); }
         
+        /* Estilo para os botões de rolagem do MENU */
+        .menu-scroll-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--laranja);
+            color: var(--branco);
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin: 0 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            transition: opacity 0.3s;
+        }
+        .menu-scroll-btn:hover {
+            opacity: 0.8;
+        }
+
         .produtos-container { padding: 15px; }
         .produto-card { background: var(--branco); border-radius: 10px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); display: flex; }
         .produto-imagem-container { width: 120px; height: 120px; min-width: 120px; }
@@ -49,7 +67,7 @@
         @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 999; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s; display: flex; flex-direction: column; max-height: 80vh; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s; display: flex; flex-direction: column; max-height: 80vh; position: relative; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; }
         
         #carrinho-itens { overflow-y: auto; flex-grow: 1; padding-right: 10px; }
@@ -89,7 +107,7 @@
         .troco-container { margin-top: 10px; display: none; }
         .troco-calculado { background-color: #FFF9E6; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
         
-        .confirmacao-content { text-align: center; }
+        .confirmacao-content { text-align: center; overflow-y: auto; }
         .confirmacao-content h2 { font-size: 28px; color: var(--marrom); margin-bottom: 15px; }
         .confirmacao-content p { margin: 15px 0; font-size: 16px; color: #333; }
         .codigo-entrega-container { margin: 20px 0; }
@@ -99,26 +117,51 @@
         .info-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
         .success-box { background-color: #FFF3E0; padding: 15px; border-radius: 10px; margin: 15px 0; }
         
-        .modal-header button {
-            padding: 8px !important;
-            line-height: 1;
+        /* Estilo para os botões de rolagem do modal */
+        .modal-scroll-btn {
+            position: absolute;
+            right: 15px;
+            width: 45px;
+            height: 45px;
+            background-color: var(--laranja);
+            color: var(--branco);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        .modal-scroll-btn:hover {
+            opacity: 0.85;
+        }
+        #btn-scroll-up {
+            bottom: 75px;
+        }
+        #btn-scroll-down {
+            bottom: 20px;
         }
 
-        @media (max-width: 500px) {
-            .modal-content.confirmacao-content {
-                max-width: 95% !important;
-                padding: 15px !important;
-            }
-            .codigo-entrega {
-                font-size: 20px !important;
-                padding: 10px !important;
-                letter-spacing: 3px;
-            }
-            .emoji-header {
-                font-size: 40px !important;
+        @media screen and (max-width: 480px) {
+            .modal-content {
+                padding: 20px;
             }
             .confirmacao-content h2 {
-                font-size: 22px !important;
+                font-size: 22px;
+            }
+            .emoji-header {
+                font-size: 50px;
+            }
+            .codigo-entrega {
+                font-size: 26px;
+                padding: 12px;
+                letter-spacing: 3px;
+            }
+            .confirmacao-content p {
+                font-size: 15px;
             }
         }
     </style>
@@ -131,7 +174,9 @@
         </div>
     </header>
     <div class="menu-container">
-        <button id="btn-scroll-left" class="menu-nav-btn"><i class="fas fa-chevron-left"></i></button>
+        <div id="menu-scroll-left" class="menu-scroll-btn">
+            <i class="fas fa-chevron-left"></i>
+        </div>
         <div class="menu-categorias">
              <button class="categoria-btn ativo" data-categoria="Burgers 180g">Burgers 180g</button>
              <button class="categoria-btn" data-categoria="Burgers 120g">Burgers 120g</button>
@@ -139,7 +184,9 @@
              <button class="categoria-btn" data-categoria="Combos">Combos</button>
              <button class="categoria-btn" data-categoria="Bebidas">Bebidas</button>
         </div>
-        <button id="btn-scroll-right" class="menu-nav-btn"><i class="fas fa-chevron-right"></i></button>
+        <div id="menu-scroll-right" class="menu-scroll-btn">
+            <i class="fas fa-chevron-right"></i>
+        </div>
     </div>
     <div class="produtos-container"></div>
     <button class="carrinho-btn">
@@ -149,12 +196,7 @@
     
     <div id="modalCarrinho" class="modal">
          <div class="modal-content">
-            <div class="modal-header">
-                <h2>Meu Carrinho</h2>
-                <button onclick="fecharModalCarrinho()" style="background:none; border:none; font-size: 24px; cursor:pointer; padding: 8px;">
-                    &times;
-                </button>
-            </div>
+            <div class="modal-header"><h2>Meu Carrinho</h2><button id="fechar-carrinho-btn" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button></div>
             <div id="carrinho-itens"></div>
             <div class="carrinho-footer">
                 <div class="carrinho-resumo">
@@ -162,9 +204,7 @@
                     <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
                 </div>
                 <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
-                <div class="carrinho-actions">
-                    <button id="btn-finalizar-pedido">Finalizar Pedido</button>
-                </div>
+                <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
             </div>
         </div>
     </div>
@@ -177,10 +217,7 @@
                 <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
                 <small style="color: #666;">Digite 10 ou 11 números: DDD + Telefone.</small>
             </div>
-            <div class="form-actions">
-                <button id="btn-continuar-login" class="btn-primary">Continuar</button>
-                <button onclick="fecharModalLogin()" class="btn-secondary">Voltar ao Carrinho</button>
-            </div>
+            <div class="form-actions"><button id="btn-continuar-login" class="btn-primary">Continuar</button><button id="btn-voltar-carrinho" class="btn-secondary">Voltar ao Carrinho</button></div>
         </div>
     </div>
     
@@ -295,6 +332,13 @@
             <button id="btn-novo-pedido" class="btn-primary" style="margin-top: 20px;">
                 🍔 Fazer Novo Pedido
             </button>
+            
+            <div id="btn-scroll-up" class="modal-scroll-btn">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div id="btn-scroll-down" class="modal-scroll-btn">
+                <i class="fas fa-arrow-down"></i>
+            </div>
         </div>
     </div>
 
@@ -325,7 +369,7 @@
             // Burgers 180g
             { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
-            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
+            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
             { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
             { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
@@ -339,7 +383,7 @@
             { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
             { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
 
-            // Frango
+            // Lanches de Frango
             { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
             
             // Combos
@@ -355,7 +399,7 @@
             { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
             { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
             { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
-            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avf', categoria: 'Bebidas' },
+            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
             { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
         ];
 
@@ -406,7 +450,7 @@
                 carrinhoItensContainer.innerHTML = '<p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>';
                 document.getElementById('btn-finalizar-pedido').style.display = 'none';
                 carrinhoSubtotal.textContent = "R$ 0,00";
-                carrinhoTaxaEntrega.textContent = "R$ 5,00";
+                carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
                 carrinhoTotalValor.textContent = "R$ 0,00";
             } else {
                 document.getElementById('btn-finalizar-pedido').style.display = 'block';
@@ -459,36 +503,18 @@
             btnContinuar.disabled = true;
             btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
-            try {
-                const response = await fetch('/api/identificar-cliente', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telefone: telefoneCru })
-                });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    alert(errorData.message || "Ocorreu um erro no servidor.");
-                    throw new Error(`Erro do Servidor: ${response.statusText}`);
-                }
-                const data = await response.json();
-                if (data.success) {
-                    clienteAtual = data.cliente;
-                    clienteAtual.telefoneFormatado = telefoneCru;
-                    if (data.isNew) {
-                        abrirModalEndereco();
-                    } else {
-                        abrirModalConfirmarDados(clienteAtual);
-                    }
+            setTimeout(() => {
+                clienteAtual = { telefone: telefoneLimpo, telefoneFormatado: telefoneCru };
+                const dadosSalvos = localStorage.getItem(telefoneLimpo);
+                if (!dadosSalvos) {
+                    abrirModalEndereco();
                 } else {
-                    alert(data.message || "Não foi possível validar seu número. Tente novamente.");
+                    clienteAtual = { ...clienteAtual, ...JSON.parse(dadosSalvos) };
+                    abrirModalConfirmarDados(clienteAtual);
                 }
-            } catch (error) {
-                console.error("Erro de rede ao verificar telefone:", error);
-                alert("Não foi possível conectar ao nosso sistema. Verifique sua conexão e tente novamente.");
-            } finally {
                 btnContinuar.disabled = false;
                 btnContinuar.textContent = 'Continuar';
-            }
+            }, 1000);
         }
 
         function salvarEndereco() {
@@ -498,6 +524,7 @@
             clienteAtual.nome = nome;
             clienteAtual.endereco = endereco;
             clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
+            localStorage.setItem(clienteAtual.telefone, JSON.stringify({ nome: clienteAtual.nome, endereco: clienteAtual.endereco, referencia: clienteAtual.referencia }));
             abrirModalPagamento();
         }
         
@@ -526,38 +553,21 @@
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
             
-            const dadosDoPedido = {
-                carrinho: carrinho,
-                cliente: clienteAtual,
-                pagamento: metodoPagamentoSelecionado,
-                troco: metodoPagamentoSelecionado === 'Dinheiro' ? document.getElementById('troco-input').value || null : null
-            };
+            setTimeout(() => {
+                const numeroPedido = `WEB-${Math.floor(1000 + Math.random() * 9000)}`;
+                const codigoEntrega = clienteAtual.telefone.slice(-4);
+                document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
+                document.getElementById('numero-pedido').textContent = numeroPedido;
+                document.getElementById('codigo-entrega').textContent = codigoEntrega;
+                
+                fecharModalPagamento();
+                modalConfirmacao.style.display = 'flex';
+                
+                gerenciarBotoesScrollModal();
 
-            try {
-                const response = await fetch('/api/criar-pedido', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dadosDoPedido)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    const numeroPedido = `WEB-${Math.floor(1000 + Math.random() * 9000)}`;
-                    const codigoEntrega = clienteAtual.telefone.slice(-4);
-                    document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
-                    document.getElementById('numero-pedido').textContent = numeroPedido;
-                    document.getElementById('codigo-entrega').textContent = codigoEntrega;
-                    fecharModalPagamento();
-                    modalConfirmacao.style.display = 'flex';
-                } else {
-                    alert(`Erro ao enviar o pedido: ${result.message}`);
-                }
-            } catch (error) {
-                console.error("Erro de rede:", error);
-                alert("Não foi possível conectar ao nosso servidor. Verifique sua conexão e tente novamente.");
-            } finally {
                 btnConfirmar.disabled = false;
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
-            }
+            }, 1500);
         }
 
         function fecharModalConfirmacao() {
@@ -575,9 +585,90 @@
             carregarProdutos('Burgers 180g');
         }
 
+        function gerenciarBotoesScrollModal() {
+            const modalContent = document.querySelector('#modalConfirmacao .modal-content');
+            const btnScrollUp = document.getElementById('btn-scroll-up');
+            const btnScrollDown = document.getElementById('btn-scroll-down');
+
+            const atualizarVisibilidade = () => {
+                const hasScroll = modalContent.scrollHeight > modalContent.clientHeight;
+                
+                if (!hasScroll) {
+                    btnScrollUp.style.display = 'none';
+                    btnScrollDown.style.display = 'none';
+                    return;
+                }
+
+                if (modalContent.scrollTop > 20) {
+                    btnScrollUp.style.display = 'flex';
+                } else {
+                    btnScrollUp.style.display = 'none';
+                }
+
+                if (modalContent.scrollTop + modalContent.clientHeight < modalContent.scrollHeight - 20) {
+                    btnScrollDown.style.display = 'flex';
+                } else {
+                    btnScrollDown.style.display = 'none';
+                }
+            };
+
+            btnScrollUp.onclick = () => {
+                modalContent.scrollBy({ top: -150, behavior: 'smooth' });
+            };
+
+            btnScrollDown.onclick = () => {
+                modalContent.scrollBy({ top: 150, behavior: 'smooth' });
+            };
+
+            modalContent.addEventListener('scroll', atualizarVisibilidade);
+            atualizarVisibilidade();
+        }
+
+        function gerenciarBotoesScrollMenu() {
+            const menu = document.querySelector('.menu-categorias');
+            const btnLeft = document.getElementById('menu-scroll-left');
+            const btnRight = document.getElementById('menu-scroll-right');
+
+            const checkScroll = () => {
+                const hasHorizontalScroll = menu.scrollWidth > menu.clientWidth;
+
+                if (!hasHorizontalScroll) {
+                    btnLeft.style.display = 'none';
+                    btnRight.style.display = 'none';
+                    return;
+                }
+
+                if (menu.scrollLeft > 0) {
+                    btnLeft.style.display = 'flex';
+                } else {
+                    btnLeft.style.display = 'none';
+                }
+                
+                const maxScrollLeft = menu.scrollWidth - menu.clientWidth;
+                if (menu.scrollLeft < maxScrollLeft - 1) {
+                    btnRight.style.display = 'flex';
+                } else {
+                    btnRight.style.display = 'none';
+                }
+            };
+
+            btnLeft.addEventListener('click', () => {
+                menu.scrollBy({ left: -150, behavior: 'smooth' });
+            });
+
+            btnRight.addEventListener('click', () => {
+                menu.scrollBy({ left: 150, behavior: 'smooth' });
+            });
+            
+            menu.addEventListener('scroll', checkScroll);
+            window.addEventListener('load', checkScroll);
+            window.addEventListener('resize', checkScroll);
+        }
+
         function inicializar() {
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
+            gerenciarBotoesScrollMenu();
             
             document.getElementById('troco-input').addEventListener('input', function() {
                 const trocoInput = parseFloat(this.value);
@@ -597,10 +688,6 @@
                     trocoCalculado.style.display = 'none';
                 }
             });
-
-            const menuCategorias = document.querySelector('.menu-categorias');
-            document.getElementById('btn-scroll-left').addEventListener('click', () => { menuCategorias.scrollLeft -= 150; });
-            document.getElementById('btn-scroll-right').addEventListener('click', () => { menuCategorias.scrollLeft += 150; });
 
             botoesCategoria.forEach(botao => { 
                 botao.addEventListener('click', () => { 
@@ -642,6 +729,8 @@
                 } 
             });
             
+            document.getElementById('fechar-carrinho-btn').addEventListener('click', fecharModalCarrinho);
+            document.getElementById('btn-voltar-carrinho').addEventListener('click', fecharModalLogin);
             document.getElementById('btn-finalizar-pedido').addEventListener('click', abrirModalLogin);
             document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
             document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
