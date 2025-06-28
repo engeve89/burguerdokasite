@@ -45,7 +45,7 @@ app.use(express.static('public'));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 19,
+  max: 100, // Ajustado para um valor mais razoável para desenvolvimento/teste
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
@@ -212,43 +212,65 @@ function normalizarTelefone(telefone) {
   return `55${ddd}${numeroBase}`;
 }
 
+
+// ==================================================================
+// FUNÇÃO ALTERADA
+// ==================================================================
 function gerarCupomFiscal(pedido) {
-  const { cliente, carrinho, pagamento, troco } = pedido;
-  const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
-  const taxaEntrega = 5.00;
-  const total = subtotal + taxaEntrega;
-  const now = new Date();
-  
-  let cupom = `==================================================\n`;
-  cupom += `      Doka Burger - Pedido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n`;
-  cupom += `==================================================\n`;
-  cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
-  cupom += `*ITENS:*\n`;
-  
-  carrinho.forEach(item => {
-    const nomeFormatado = item.nome.padEnd(25, ' ');
-    const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
-    cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
-    if (item.observacao) cupom += `  Obs: ${item.observacao}\n`;
-  });
-  
-  cupom += `--------------------------------------------------\n`;
-  cupom += `Subtotal:         R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-  cupom += `Taxa de Entrega:  R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
-  cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
-  cupom += `--------------------------------------------------\n`;
-  cupom += `*ENDEREÇO:*\n${cliente.endereco}\n`;
-  if (cliente.referencia) cupom += `Ref: ${cliente.referencia}\n`;
-  cupom += `--------------------------------------------------\n`;
-  cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
-  if (pagamento === 'Dinheiro' && troco) {
-    cupom += `Troco para: R$ ${troco}\n`;
-  }
-  cupom += `==================================================\n`;
-  cupom += `               OBRIGADO PELA PREFERÊNCIA!`;
-  
-  return cupom;
+    const { cliente, carrinho, pagamento, troco } = pedido;
+    const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+    const taxaEntrega = 5.00;
+    const total = subtotal + taxaEntrega;
+    const now = new Date();
+
+    // Define as opções de formatação, especificando o fuso horário de São Paulo
+    const options = {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    };
+
+    // Cria uma string de data e hora formatada para o Brasil
+    const formatter = new Intl.DateTimeFormat('pt-BR', options);
+    const dataHoraLocal = formatter.format(now);
+
+    // Separa a data e a hora para usar no cupom
+    const [dataLocal, horaLocal] = dataHoraLocal.split(', ');
+
+    let cupom = `==================================================\n`;
+    cupom += `     Doka Burger - Pedido em ${dataLocal} às ${horaLocal.substring(0, 5)}\n`;
+    cupom += `==================================================\n`;
+    cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
+    cupom += `*ITENS:*\n`;
+    
+    carrinho.forEach(item => {
+        const nomeFormatado = item.nome.padEnd(25, ' ');
+        const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
+        cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
+        if (item.observacao) cupom += `  Obs: ${item.observacao}\n`;
+    });
+    
+    cupom += `--------------------------------------------------\n`;
+    cupom += `Subtotal:         R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    cupom += `Taxa de Entrega:  R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
+    cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
+    cupom += `--------------------------------------------------\n`;
+    cupom += `*ENDEREÇO:*\n${cliente.endereco}\n`;
+    if (cliente.referencia) cupom += `Ref: ${cliente.referencia}\n`;
+    cupom += `--------------------------------------------------\n`;
+    cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
+    if (pagamento === 'Dinheiro' && troco) {
+        cupom += `Troco para: R$ ${troco}\n`;
+    }
+    cupom += `==================================================\n`;
+    cupom += `              OBRIGADO PELA PREFERÊNCIA!`;
+    
+    return cupom;
 }
+// ==================================================================
+// FIM DA FUNÇÃO ALTERADA
+// ==================================================================
+
 
 // Rotas da API
 app.get('/health', async (req, res) => {
@@ -357,19 +379,17 @@ app.post('/api/criar-pedido', async (req, res) => {
   try {
     clientDB = await pool.connect();
     
-    // Verifica e insere cliente se necessário
-    const clienteExistente = await clientDB.query(
-      'SELECT * FROM clientes WHERE telefone = $1', 
-      [telefoneNormalizado]
-    );
-    
-    if (clienteExistente.rows.length === 0) {
-      await clientDB.query(
-        'INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4)',
-        [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]
-      );
-      logger.info(`Novo cliente cadastrado: ${cliente.nome}`);
-    }
+    // Verifica e insere/atualiza cliente
+    await clientDB.query(`
+        INSERT INTO clientes (telefone, nome, endereco, referencia) 
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (telefone) 
+        DO UPDATE SET 
+            nome = EXCLUDED.nome, 
+            endereco = EXCLUDED.endereco, 
+            referencia = EXCLUDED.referencia;
+    `, [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]);
+    logger.info(`Cliente cadastrado/atualizado: ${cliente.nome}`);
 
     // Envia cupom fiscal
     const cupom = gerarCupomFiscal(pedido);
