@@ -49,10 +49,22 @@
         @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 999; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s; display: flex; flex-direction: column; max-height: 80vh; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
         
-        /* .btn-fechar-modal foi removido pois o elemento não existe mais */
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+            animation: modalFadeIn 0.3s;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            overflow-y: auto; /* <-- CORREÇÃO APLICADA AQUI */
+        }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; position: relative; }
         
         #carrinho-itens { overflow-y: auto; flex-grow: 1; padding-right: 10px; }
         .carrinho-item { display: flex; flex-direction: column; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
@@ -83,7 +95,6 @@
         .btn-primary { background: var(--laranja); color: var(--branco); margin-bottom: 8px; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%;}
         .btn-secondary { background: var(--cinza); color: var(--marrom); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
         
-        /* ALTERAÇÃO: Adicionado estilo para o novo botão verde */
         .btn-success { background: var(--verde); color: var(--branco); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
 
         #dados-confirmacao p { margin-bottom: 10px; background-color: #fafafa; padding: 10px; border-radius: 5px; text-align: left; }
@@ -134,7 +145,7 @@
          <div class="modal-content">
              <div class="modal-header">
                  <h2>Meu Carrinho</h2>
-                 </div>
+             </div>
              <div id="carrinho-itens"></div>
              <div class="carrinho-footer">
                  <div class="carrinho-resumo">
@@ -151,7 +162,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Identificação</h2>
-                </div>
+            </div>
             <div class="form-group">
                 <label for="input-telefone">Seu WhatsApp (apenas números)</label>
                 <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
@@ -165,7 +176,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Confirme seus Dados</h2>
-                </div>
+            </div>
             <p>Olá de novo! Encontramos seu cadastro. Os dados abaixo estão corretos?</p>
             <div id="dados-confirmacao"></div>
             <div class="form-actions">
@@ -179,7 +190,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Onde será a entrega?</h2>
-                </div>
+            </div>
             <p style="margin-bottom: 15px; font-size: 14px; color: #666;">Como é sua primeira vez (ou você pediu para editar), precisamos do seu endereço.</p>
             <div class="form-group"><label>Contato (WhatsApp)</label><input type="tel" id="input-contato-endereco" readonly></div>
              <div class="form-group"><label for="input-nome">Nome Completo</label><input type="text" id="input-nome" placeholder="Seu nome completo"></div>
@@ -193,7 +204,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>💰 Forma de Pagamento</h2>
-                </div>
+            </div>
             
             <div class="metodo-pagamento" data-metodo="Dinheiro">
                 <i class="fas fa-money-bill-wave"></i>
@@ -422,10 +433,8 @@
             modalCarrinho.style.display = 'none'; 
         }
 
-        // ALTERAÇÃO: Função para fechar todos os modais (usada ao clicar fora)
         function fecharTodosOsModais() {
             document.querySelectorAll('.modal').forEach(modal => {
-                // Não fecha o modal de confirmação final com esta função
                 if (modal.id !== 'modalConfirmacao') {
                     modal.style.display = 'none';
                 }
@@ -588,14 +597,14 @@
                     document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
                     document.getElementById('numero-pedido').textContent = numeroPedido;
                     document.getElementById('codigo-entrega').textContent = codigoEntrega;
-                    fecharTodosOsModais(); // Fecha todos os modais abertos
+                    fecharTodosOsModais();
                     modalConfirmacao.style.display = 'flex';
                 } else { 
                     alert(`Erro ao enviar o pedido: ${result.message}`); 
                 }
             } catch (error) {
                 console.error("Erro de rede:", error);
-                alert("Não foi possível conectar ao nosso servidor. Verifique sua conexão e tente novamente.");
+                alert("Não foi possível conectar ao nosso sistema. Verifique sua conexão e tente novamente.");
             } finally {
                 btnConfirmar.disabled = false;
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
@@ -626,10 +635,8 @@
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
             
-            // ALTERAÇÃO: Adiciona evento para fechar modal ao clicar fora
             document.querySelectorAll('.modal').forEach(modal => {
                 modal.addEventListener('click', (event) => {
-                    // Verifica se o clique foi no fundo do modal (o próprio elemento .modal)
                     if (event.target === modal) {
                         fecharTodosOsModais();
                     }
