@@ -269,7 +269,12 @@ app.post('/api/identificar-cliente', async (req, res) => {
 });
 
 app.post('/api/criar-pedido', async (req, res) => {
-    if (whatsappStatus !== 'ready') { return res.status(503).json({ success: false, message: "Servidor de WhatsApp iniciando. Tente em instantes." }); }
+    if (whatsappStatus !== 'ready') { 
+        return res.status(503).json({ 
+            success: false, 
+            message: "Servidor de WhatsApp iniciando. Tente em instantes." 
+        }); 
+    }
     
     const pedido = req.body;
     const { cliente } = pedido;
@@ -309,18 +314,19 @@ app.post('/api/criar-pedido', async (req, res) => {
         
         // Lógica de acompanhamento (com verificação para não reenviar)
         setTimeout(async () => {
+            let clientDBInternal = null;
             try {
-                const clientDB = await pool.connect();
-                const result = await clientDB.query(
+                clientDBInternal = await pool.connect();
+                const result = await clientDBInternal.query(
                     'SELECT mensagem_confirmacao_enviada FROM pedidos WHERE id = $1',
                     [pedidoId]
                 );
                 
-                if (!result.rows[0].mensagem_confirmacao_enviada) {
+                if (result.rows.length > 0 && !result.rows[0].mensagem_confirmacao_enviada) {
                     const msgConfirmacao = `✅ *Doka Burger* - Seu pedido #${pedidoId} foi confirmado e já está em preparo! 🍔⏳\n\nAgradecemos sua preferência!`;
                     await client.sendMessage(numeroClienteParaApi, msgConfirmacao);
                     
-                    await clientDB.query(
+                    await clientDBInternal.query(
                         'UPDATE pedidos SET mensagem_confirmacao_enviada = true WHERE id = $1',
                         [pedidoId]
                     );
@@ -329,23 +335,30 @@ app.post('/api/criar-pedido', async (req, res) => {
             } catch (error) {
                 logger.error(`Erro ao enviar mensagem de confirmação: ${error}`);
             } finally {
-                if (clientDB) clientDB.release();
+                if (clientDBInternal) {
+                    try {
+                        clientDBInternal.release();
+                    } catch (releaseError) {
+                        logger.error(`Erro ao liberar conexão de confirmação: ${releaseError.message}`);
+                    }
+                }
             }
         }, 30 * 1000); // 30 segundos
 
         setTimeout(async () => {
+            let clientDBInternal = null;
             try {
-                const clientDB = await pool.connect();
-                const result = await clientDB.query(
+                clientDBInternal = await pool.connect();
+                const result = await clientDBInternal.query(
                     'SELECT mensagem_entrega_enviada FROM pedidos WHERE id = $1',
                     [pedidoId]
                 );
                 
-                if (!result.rows[0].mensagem_entrega_enviada) {
+                if (result.rows.length > 0 && !result.rows[0].mensagem_entrega_enviada) {
                     const msgEntrega = `🚚 *Doka Burger* - Seu pedido #${pedidoId} saiu para entrega! Deve chegar em instantes!\n\nPor favor, tenha o valor do pedido pronto.`;
                     await client.sendMessage(numeroClienteParaApi, msgEntrega);
                     
-                    await clientDB.query(
+                    await clientDBInternal.query(
                         'UPDATE pedidos SET mensagem_entrega_enviada = true WHERE id = $1',
                         [pedidoId]
                     );
@@ -354,7 +367,13 @@ app.post('/api/criar-pedido', async (req, res) => {
             } catch (error) {
                 logger.error(`Erro ao enviar mensagem de entrega: ${error}`);
             } finally {
-                if (clientDB) clientDB.release();
+                if (clientDBInternal) {
+                    try {
+                        clientDBInternal.release();
+                    } catch (releaseError) {
+                        logger.error(`Erro ao liberar conexão de entrega: ${releaseError.message}`);
+                    }
+                }
             }
         }, 30 * 60 * 1000); // 30 minutos
 
