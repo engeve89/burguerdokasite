@@ -384,7 +384,7 @@ app.post('/api/criar-pedido', async (req, res) => {
                 );
                 
                 if (result.rows.length > 0 && !result.rows[0].mensagem_entrega_enviada) {
-                    const msgEntrega = `🚚 *Doka Burger* - Seu pedido #${pedidoId} saiu para entrega! Deve chegar em instantes!\n\nPor favor, tenha o valor do pedido pronto.`;
+                    const msgEntrega = `🚚 *Doka Burger* - Seu pedido #${pedidoId} saiu para entrega! Deve chegar em instantes!\n\n entre 10 a 15 min se já chegou desconsidere a mensagem.`;
                     await client.sendMessage(numeroClienteParaApi, msgEntrega);
                     
                     await clientDBInternal.query(
