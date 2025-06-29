@@ -352,7 +352,7 @@ app.post('/api/criar-pedido', async (req, res) => {
                 );
                 
                 if (result.rows.length > 0 && !result.rows[0].mensagem_confirmacao_enviada) {
-                    const msgConfirmacao = `✅ *Doka Burger* - Seu pedido #${pedidoId} foi confirmado e já está em indo para chapa! 🍔⏳\n\nTempo de Entrega 35 a 40 min!`;
+                    const msgConfirmacao = `✅ *Doka Burger* - Seu pedido #${pedidoId} foi confirmado e já está indo para chapa! 🍔⏳\n\nTempo de Entrega 35 a 40 min!`;
                     await client.sendMessage(numeroClienteParaApi, msgConfirmacao);
                     
                     await clientDBInternal.query(
