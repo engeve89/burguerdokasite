@@ -113,41 +113,31 @@ const client = new Client({
   session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
 });
 
-// --- Funções Auxiliares Atualizadas ---
-
+// --- Função de Normalização de Telefone Atualizada ---
 function normalizarTelefone(telefone) {
   if (typeof telefone !== 'string') return null;
   
   // Remove tudo que não for dígito
   let limpo = telefone.replace(/\D/g, '');
   
-  // Remove o 55 do início se existir
-  if (limpo.startsWith('55')) {
-    limpo = limpo.substring(2);
-  }
+  // Remove todos os prefixos '0' e '55' iniciais
+  limpo = limpo.replace(/^(0+|55+)/, '');
   
-  // Verifica se tem DDD (2 dígitos) + número (8 ou 9 dígitos)
-  if (limpo.length === 10) {
-    // Número com 8 dígitos + 2 do DDD (total 10) - válido para alguns estados
+  // Verifica comprimento após limpeza
+  if (limpo.length === 10 || limpo.length === 11) {
+    // Números com 10 dígitos: DDD (2) + número (8)
+    // Números com 11 dígitos: DDD (2) + número (9)
     const ddd = limpo.substring(0, 2);
     const numero = limpo.substring(2);
     
-    // Verifica se o número tem 8 dígitos (padrão para alguns estados)
-    if (numero.length === 8) {
-      return `55${ddd}${numero}`;
-    }
-  } else if (limpo.length === 11) {
-    // Número com 9 dígitos + 2 do DDD (total 11) - padrão mais comum
-    const ddd = limpo.substring(0, 2);
-    const numero = limpo.substring(2);
+    // Remove o nono dígito se necessário
+    const numeroFinal = (numero.length === 9 && numero.startsWith('9'))
+      ? numero.substring(1)  // Remove o primeiro '9'
+      : numero;
     
-    // Verifica se o número tem 9 dígitos
-    if (numero.length === 9) {
-      return `55${ddd}${numero}`;
-    }
+    return `55${ddd}${numeroFinal}`;
   }
   
-  // Se não atender aos padrões, retorna null
   return null;
 }
 
@@ -238,15 +228,29 @@ app.post('/api/identificar-cliente', async (req, res) => {
     const telefoneNormalizado = normalizarTelefone(telefone);
 
     if (!telefoneNormalizado) {
-        return res.status(400).json({ success: false, message: "Formato de número de telefone inválido." });
+        return res.status(400).json({ 
+            success: false, 
+            message: "Formato de número de telefone inválido. Use DDD + número (10 ou 11 dígitos)" 
+        });
+    }
+    
+    // Verificação adicional de comprimento
+    if (telefoneNormalizado.length !== 12) {
+        return res.status(400).json({
+            success: false,
+            message: "Número inválido após normalização. Por favor, verifique o formato."
+        });
     }
     
     let clientDB;
     try {
-        const numeroParaApi = `${telefoneNormalizado.substring(2)}@c.us`; // Formato para a API whatsapp-web.js
+        const numeroParaApi = `${telefoneNormalizado}@c.us`;
         const isRegistered = await client.isRegisteredUser(numeroParaApi);
         if (!isRegistered) {
-            return res.status(400).json({ success: false, message: "Este número não possui uma conta de WhatsApp ativa." });
+            return res.status(400).json({ 
+                success: false, 
+                message: "Este número não possui uma conta de WhatsApp ativa." 
+            });
         }
         
         clientDB = await pool.connect();
@@ -284,10 +288,17 @@ app.post('/api/criar-pedido', async (req, res) => {
         return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
     }
     
-    // Adiciona o telefone formatado (com máscara) ao objeto do pedido para uso no cupom
+    // Verificação adicional de comprimento
+    if (telefoneNormalizado.length !== 12) {
+        return res.status(400).json({
+            success: false,
+            message: "Número de telefone inválido após normalização. Por favor, verifique o formato."
+        });
+    }
+    
     pedido.cliente.telefoneFormatado = cliente.telefone;
 
-    const numeroClienteParaApi = `${telefoneNormalizado.substring(2)}@c.us`;
+    const numeroClienteParaApi = `${telefoneNormalizado}@c.us`;
     let clientDB;
     try {
         clientDB = await pool.connect();
