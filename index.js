@@ -9,10 +9,24 @@ const { Pool } = require('pg');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
-// Configuração de logs
+// Função para obter data/hora atual em Brasília (UTC-3)
+function getBrasiliaTime() {
+    const now = new Date();
+    // Ajusta para UTC-3 (Brasília)
+    now.setHours(now.getHours() - 3);
+    return now;
+}
+
+// Configuração de logs com horário de Brasília
 const logger = {
-  info: (msg) => console.log(`[INFO] ${new Date().toISOString()} - ${msg}`),
-  error: (msg) => console.error(`[ERROR] ${new Date().toISOString()} - ${msg}`)
+  info: (msg) => {
+      const now = getBrasiliaTime();
+      console.log(`[INFO] ${now.toISOString()} - ${msg}`);
+  },
+  error: (msg) => {
+      const now = getBrasiliaTime();
+      console.error(`[ERROR] ${now.toISOString()} - ${msg}`);
+  }
 };
 
 // Configuração do Express
@@ -23,7 +37,6 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // --- Middlewares de Segurança e Funcionalidade ---
-
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
@@ -146,9 +159,14 @@ function gerarCupomFiscal(pedido) {
     const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
     const taxaEntrega = 5.00;
     const total = subtotal + taxaEntrega;
-    const now = new Date();
+    const now = getBrasiliaTime();
+    
+    // Formata a data manualmente
+    const dataFormatada = now.toLocaleDateString('pt-BR');
+    const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
     let cupom = `==================================================\n`;
-    cupom += `     Doka Burger - Pedido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-br', { hour: '2-digit', minute: '2-digit' })}\n`;
+    cupom += `     Doka Burger - Pedido em ${dataFormatada} às ${horaFormatada}\n`;
     cupom += `==================================================\n`
     cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
     cupom += `*ITENS:*\n`;
@@ -423,11 +441,16 @@ app.get('/api/historico/:telefone', async (req, res) => {
         const historico = result.rows.map(pedido => {
             const dados = pedido.dados_pedido;
             const subtotal = dados.carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
-            const valorTotal = subtotal + 5.00; // 5.00 é a taxa de entrega fixa
+            const valorTotal = subtotal + 5.00;
+            
+            // Ajusta a data para horário de Brasília
+            const dataPedido = new Date(pedido.criado_em);
+            dataPedido.setHours(dataPedido.getHours() - 3);
+            const dataFormatada = dataPedido.toLocaleString('pt-BR');
 
             return {
                 id: pedido.id,
-                dataPedido: pedido.criado_em,
+                dataPedido: dataFormatada,
                 valorTotal: valorTotal,
                 status: dados.status || "Entregue",
                 itens: dados.carrinho.map(item => ({
