@@ -221,6 +221,7 @@
         .pedido-card-body ul li {
             margin-bottom: 5px;
         }
+
     </style>
 </head>
 <body>
@@ -419,116 +420,123 @@
     </div>
 
     <script>
-        // =================================================================================
-        // INÍCIO DAS OTIMIZAÇÕES DE PERFORMANCE E BOAS PRÁTICAS
-        // =================================================================================
-
-        /**
-         * OTIMIZAÇÃO 1: Função Debounce
-         * Evita que uma função seja chamada excessivamente em eventos de alta frequência (como scroll).
-         * A função só será executada após um período de inatividade, economizando CPU.
-         */
-        function debounce(func, wait) {
-            let timeoutId;
-            return function(...args) {
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => func.apply(this, args), wait);
-            };
-        }
-        
-        // =================================================================================
-        // FIM DAS OTIMIZAÇÕES
-        // =================================================================================
-
-
         const NOME_HAMBURGUERIA = "DokaBurger";
         const TAXA_ENTREGA = 5.00;
         
-        /**
-         * OTIMIZAÇÃO 2: Cache de Seletores DOM
-         * Armazenamos referências a elementos do DOM em um objeto para evitar
-         * consultas repetidas na árvore DOM, o que melhora a performance.
-         */
-        const ui = {
-            produtosContainer: document.querySelector('.produtos-container'),
-            botoesCategoria: document.querySelectorAll('.categoria-btn'),
-            menuCategorias: document.querySelector('.menu-categorias'),
-            contadorCarrinho: document.querySelector('.carrinho-contador'),
-            carrinhoBtn: document.querySelector('.carrinho-btn'),
-            
-            // Modais
-            modalCarrinho: document.getElementById('modalCarrinho'),
-            modalLogin: document.getElementById('modalLogin'),
-            modalEndereco: document.getElementById('modalEndereco'),
-            modalPagamento: document.getElementById('modalPagamento'),
-            modalConfirmacao: document.getElementById('modalConfirmacao'),
-            modalConfirmarDados: document.getElementById('modalConfirmarDados'),
-            modalHistorico: document.getElementById('modalHistorico'),
+        const produtosContainer = document.querySelector('.produtos-container');
+        const botoesCategoria = document.querySelectorAll('.categoria-btn');
+        const contadorCarrinho = document.querySelector('.carrinho-contador');
+        const modalCarrinho = document.getElementById('modalCarrinho');
+        const modalLogin = document.getElementById('modalLogin');
+        const modalEndereco = document.getElementById('modalEndereco');
+        const modalPagamento = document.getElementById('modalPagamento');
+        const modalConfirmacao = document.getElementById('modalConfirmacao');
+        const modalConfirmarDados = document.getElementById('modalConfirmarDados');
+        const carrinhoItensContainer = document.getElementById('carrinho-itens');
+        const carrinhoSubtotal = document.getElementById('carrinho-subtotal');
+        const carrinhoTaxaEntrega = document.getElementById('carrinho-taxa-entrega');
+        const carrinhoTotalValor = document.getElementById('carrinho-total-valor');
+        const btnNovoPedido = document.getElementById('btn-novo-pedido');
+        const modalHistorico = document.getElementById('modalHistorico');
+        const historicoContainer = document.getElementById('historico-container');
+        const btnMeusPedidos = document.getElementById('btn-meus-pedidos');
+        const btnBuscarHistorico = document.getElementById('btn-buscar-historico');
 
-            // Elementos do Carrinho
-            carrinhoItensContainer: document.getElementById('carrinho-itens'),
-            carrinhoSubtotal: document.getElementById('carrinho-subtotal'),
-            carrinhoTaxaEntrega: document.getElementById('carrinho-taxa-entrega'),
-            carrinhoTotalValor: document.getElementById('carrinho-total-valor'),
-            btnFinalizarPedido: document.getElementById('btn-finalizar-pedido'),
-            fecharCarrinhoBtn: document.getElementById('fechar-carrinho-btn'),
-            
-            // Elementos do Login
-            inputTelefone: document.getElementById('input-telefone'),
-            btnContinuarLogin: document.getElementById('btn-continuar-login'),
-            btnVoltarCarrinho: document.getElementById('btn-voltar-carrinho'),
-
-            // Outros botões e elementos
-            btnNovoPedido: document.getElementById('btn-novo-pedido'),
-            btnMeusPedidos: document.getElementById('btn-meus-pedidos'),
-            btnBuscarHistorico: document.getElementById('btn-buscar-historico'),
-            btnFecharHistorico: document.getElementById('btn-fechar-historico'),
-            
-            // Histórico
-            historicoContainer: document.getElementById('historico-container')
-        };
-        
-        // Variáveis de estado da aplicação
         let carrinho = [];
         let clienteAtual = null;
         let metodoPagamentoSelecionado = null;
-        let addBtnTimers = {}; // OTIMIZAÇÃO 3: Gerenciador para os timers de feedback
+        let activeTimeouts = [];
+        let activeListeners = [];
+        let throttledFunctions = [];
+        
+        // Função de throttling otimizada
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Verifica se um elemento está visível
+        function isElementVisible(el) {
+            const rect = el.getBoundingClientRect();
+            return (
+                rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.bottom >= 0
+            );
+        }
+
+        // Limpa todos os timeouts ativos
+        function clearAllTimeouts() {
+            activeTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            activeTimeouts = [];
+        }
+
+        // Limpa todos os event listeners
+        function removeAllListeners() {
+            activeListeners.forEach(({element, event, handler}) => {
+                element.removeEventListener(event, handler);
+            });
+            activeListeners = [];
+        }
+
+        // Registra um listener para remoção posterior
+        function registerListener(element, event, handler) {
+            element.addEventListener(event, handler);
+            activeListeners.push({element, event, handler});
+        }
 
         const cardapioDB = [
-            // ... (o conteúdo do cardapioDB permanece o mesmo) ...
-             { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
-             { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
-             { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
-             { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
-             { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
-             { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
-             { id: 'b12_1', nome: 'Doka Burguer 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cheese-burguer-doka.jpg', categoria: 'Burgers 120g' },
-             { id: 'b12_3', nome: 'Doka Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon.avif', categoria: 'Burgers 120g' },
-             { id: 'b12_4', nome: 'Doka Salada 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, alface ou rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 120g' },
-             { id: 'b12_5', nome: 'Dokinha cheese Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/smash-cheese-bacon.avif', categoria: 'Burgers 120g' },
-             { id: 'b12_9', nome: 'Doka Classic Burguer', preco: 28.90, descricao: "Pão, 2 smash's 70g, 2 queijos cheddar, ketchup, mostarda, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-classic-burguer.jpg', categoria: 'Burgers 120g' },
-             { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
-             { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
-             { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
-             { id: 'c1', nome: 'Combo Dokinha 01', preco: 44.90, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha01.avif', categoria: 'Combos' },
-             { id: 'c2', nome: 'Combo Dokinha Salada', preco: 48.60, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, cebola roxa, picles, alface, tomate, maionese + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha-salada.avif', categoria: 'Combos' },
-             { id: 'c3', nome: 'Combo Catubacon', preco: 54.99, descricao: 'Pão brioche, Hambúrguer 150g, Catupiry, bacon crocante, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-catubacon.jpg', categoria: 'Combos' },
-             { id: 'c4', nome: 'Combo Doka Casal Fit', preco: 69.99, descricao: '2x burguers clássicos (150g cada) + 2x Porções de batata (aprox. 100g cada) + 2x refri lata.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-doka-casal-fit.avif', categoria: 'Combos' },
-             { id: 'b1', nome: 'Coca-Cola Original', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-lata350ml.avif', categoria: 'Bebidas' },
-             { id: 'b2', nome: 'Coca-Cola 1L', preco: 12.00, descricao: 'Garrafa 1L', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-cola-1litros.avif', categoria: 'Bebidas' },
-             { id: 'b3', nome: 'Guaraná Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-guaran%C3%A1-fanta-laranja-350ml.avif', categoria: 'Bebidas' },
-             { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
-             { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
-             { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
-             { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
-             { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
+            // ... (mantido igual ao original) ...
+            // Burgers 180g
+            { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
+            { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
+            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
+            { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
+            { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
+            { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
+            
+            // Burgers 120g
+            { id: 'b12_1', nome: 'Doka Burguer 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cheese-burguer-doka.jpg', categoria: 'Burgers 120g' },
+            { id: 'b12_3', nome: 'Doka Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_4', nome: 'Doka Salada 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, alface ou rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_5', nome: 'Dokinha cheese Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/smash-cheese-bacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_9', nome: 'Doka Classic Burguer', preco: 28.90, descricao: "Pão, 2 smash's 70g, 2 queijos cheddar, ketchup, mostarda, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-classic-burguer.jpg', categoria: 'Burgers 120g' },
+            { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
+
+            // Lanches de Frango
+            { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
+            
+            // Combos
+            { id: 'c1', nome: 'Combo Dokinha 01', preco: 44.90, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha01.avif', categoria: 'Combos' },
+            { id: 'c2', nome: 'Combo Dokinha Salada', preco: 48.60, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, cebola roxa, picles, alface, tomate, maionese + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha-salada.avif', categoria: 'Combos' },
+            { id: 'c3', nome: 'Combo Catubacon', preco: 54.99, descricao: 'Pão brioche, Hambúrguer 150g, Catupiry, bacon crocante, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-catubacon.jpg', categoria: 'Combos' },
+            { id: 'c4', nome: 'Combo Doka Casal Fit', preco: 69.99, descricao: '2x burguers clássicos (150g cada) + 2x Porções de batata (aprox. 100g cada) + 2x refri lata.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-doka-casal-fit.avif', categoria: 'Combos' },
+
+            // Bebidas
+            { id: 'b1', nome: 'Coca-Cola Original', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-lata350ml.avif', categoria: 'Bebidas' },
+            { id: 'b2', nome: 'Coca-Cola 1L', preco: 12.00, descricao: 'Garrafa 1L', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-cola-1litros.avif', categoria: 'Bebidas' },
+            { id: 'b3', nome: 'Guaraná Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-guaran%C3%A1-fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
         ];
 
         function carregarProdutos(categoriaSelecionada) {
-            ui.produtosContainer.innerHTML = '';
+            produtosContainer.innerHTML = '';
             const produtosFiltrados = cardapioDB.filter(p => p.categoria === categoriaSelecionada);
             
             const fragment = document.createDocumentFragment();
+            
             produtosFiltrados.forEach(produto => {
                 const card = document.createElement('div');
                 card.className = 'produto-card';
@@ -536,21 +544,30 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                     <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                     <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                 </div>`;
+                                        <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                        <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                     </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
                 fragment.appendChild(card);
             });
-            ui.produtosContainer.appendChild(fragment);
+            
+            produtosContainer.appendChild(fragment);
         }
 
         function adicionarAoCarrinho(id) {
             const produto = cardapioDB.find(p => p.id === id);
             const itemExistente = carrinho.find(item => item.id === id);
-            if (itemExistente) { itemExistente.quantidade++; } else { carrinho.push({ ...produto, quantidade: 1, observacao: "" }); }
+            if (itemExistente) { 
+                itemExistente.quantidade++; 
+            } else { 
+                carrinho.push({ 
+                    ...produto, 
+                    quantidade: 1, 
+                    observacao: "" 
+                }); 
+            }
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
         }
@@ -558,76 +575,83 @@
         function removerDoCarrinho(id, removerTudo = false) {
             const itemIndex = carrinho.findIndex(item => item.id === id);
             if (itemIndex > -1) {
-                if (removerTudo || carrinho[itemIndex].quantidade === 1) { carrinho.splice(itemIndex, 1); } else { carrinho[itemIndex].quantidade--; }
+                if (removerTudo || carrinho[itemIndex].quantidade === 1) { 
+                    carrinho.splice(itemIndex, 1); 
+                } else { 
+                    carrinho[itemIndex].quantidade--; 
+                }
             }
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
         }
 
         function atualizarContadorCarrinho() {
-            ui.contadorCarrinho.textContent = carrinho.reduce((total, item) => total + item.quantidade, 0);
+            const totalItens = carrinho.reduce((total, item) => total + item.quantidade, 0);
+            contadorCarrinho.textContent = totalItens;
         }
 
-        /**
-         * OTIMIZAÇÃO 4: Otimização de Renderização com requestAnimationFrame
-         * Agendamos as manipulações intensas do DOM para o próximo ciclo de repintura do navegador,
-         * evitando travamentos e garantindo uma UI mais fluida.
-         */
         function atualizarModalCarrinho() {
-            requestAnimationFrame(() => {
-                ui.carrinhoItensContainer.innerHTML = '';
-                if (carrinho.length === 0) {
-                    ui.carrinhoItensContainer.innerHTML = '<p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>';
-                    ui.btnFinalizarPedido.style.display = 'none';
-                    ui.carrinhoSubtotal.textContent = "R$ 0,00";
-                    ui.carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
-                    ui.carrinhoTotalValor.textContent = "R$ 0,00";
-                } else {
-                    ui.btnFinalizarPedido.style.display = 'block';
-                    let subtotal = 0;
-                    const fragment = document.createDocumentFragment();
-                    carrinho.forEach(item => {
-                        subtotal += item.preco * item.quantidade;
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'carrinho-item';
-                        itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
-                        fragment.appendChild(itemDiv);
-                    });
-                    ui.carrinhoItensContainer.appendChild(fragment);
-                    
-                    const total = subtotal + TAXA_ENTREGA;
-                    ui.carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-                    ui.carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
-                    ui.carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-                }
+            carrinhoItensContainer.innerHTML = '';
+            if (carrinho.length === 0) {
+                carrinhoItensContainer.innerHTML = '<p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>';
+                document.getElementById('btn-finalizar-pedido').style.display = 'none';
+                carrinhoSubtotal.textContent = "R$ 0,00";
+                carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
+                carrinhoTotalValor.textContent = "R$ 0,00";
+                return;
+            }
+
+            document.getElementById('btn-finalizar-pedido').style.display = 'block';
+            let subtotal = 0;
+            
+            const fragment = document.createDocumentFragment();
+            
+            carrinho.forEach(item => {
+                subtotal += item.preco * item.quantidade;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'carrinho-item';
+                itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
+                fragment.appendChild(itemDiv);
             });
+            
+            carrinhoItensContainer.appendChild(fragment);
+            
+            const total = subtotal + TAXA_ENTREGA;
+            carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+            carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
+            carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         }
         
-        function abrirModalCarrinho() { ui.modalCarrinho.style.display = 'flex'; }
-        function fecharModalCarrinho() { ui.modalCarrinho.style.display = 'none'; }
-        function abrirModalLogin() { fecharModalCarrinho(); ui.modalLogin.style.display = 'flex'; ui.inputTelefone.focus(); }
-        function fecharModalLogin() { ui.modalLogin.style.display = 'none'; abrirModalCarrinho(); }
+        function abrirModalCarrinho() { modalCarrinho.style.display = 'flex'; }
+        function fecharModalCarrinho() { modalCarrinho.style.display = 'none'; }
+        function abrirModalLogin() { fecharModalCarrinho(); modalLogin.style.display = 'flex'; document.getElementById('input-telefone').focus(); }
+        function fecharModalLogin() { modalLogin.style.display = 'none'; abrirModalCarrinho(); }
         async function abrirModalEndereco() {
             fecharModalLogin();
             fecharModalConfirmarDados();
-            ui.modalEndereco.style.display = 'flex';
-            const telefoneBruto = clienteAtual.telefone || '';
+            modalEndereco.style.display = 'flex';
+            const telefoneBruto = clienteAtual.telefone || ''; 
             document.getElementById('input-contato-endereco').value = telefoneBruto;
             document.getElementById('input-nome').focus();
         }
-        function fecharModalEndereco() { ui.modalEndereco.style.display = 'none'; }
-        function abrirModalPagamento() { fecharModalLogin(); fecharModalEndereco(); fecharModalConfirmarDados(); ui.modalPagamento.style.display = 'flex'; }
-        function fecharModalPagamento() { ui.modalPagamento.style.display = 'none'; }
+        function fecharModalEndereco() { modalEndereco.style.display = 'none'; }
+        function abrirModalPagamento() { fecharModalLogin(); fecharModalEndereco(); fecharModalConfirmarDados(); modalPagamento.style.display = 'flex'; }
+        function fecharModalPagamento() { modalPagamento.style.display = 'none'; }
         function abrirModalConfirmarDados(cliente) {
             fecharModalLogin();
             const dadosContainer = document.getElementById('dados-confirmacao');
-            dadosContainer.innerHTML = `<p><strong>Nome:</strong> ${cliente.nome}</p><p><strong>Endereço:</strong> ${cliente.endereco}</p>${cliente.referencia ? `<p><strong>Referência:</strong> ${cliente.referencia}</p>` : ''}`;
-            ui.modalConfirmarDados.style.display = 'flex';
+            dadosContainer.innerHTML = `
+                <p><strong>Nome:</strong> ${cliente.nome}</p>
+                <p><strong>Endereço:</strong> ${cliente.endereco}</p>
+                ${cliente.referencia ? `<p><strong>Referência:</strong> ${cliente.referencia}</p>` : ''}
+            `;
+            modalConfirmarDados.style.display = 'flex';
         }
-        function fecharModalConfirmarDados() { ui.modalConfirmarDados.style.display = 'none'; }
+        function fecharModalConfirmarDados() { modalConfirmarDados.style.display = 'none'; }
         
         async function verificarTelefone() {
-            const telefoneCru = ui.inputTelefone.value;
+            const telefoneInput = document.getElementById('input-telefone');
+            const telefoneCru = telefoneInput.value;
             const telefoneLimpo = telefoneCru.replace(/\D/g, '');
 
             if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
@@ -635,20 +659,25 @@
                 return;
             }
 
-            ui.btnContinuarLogin.disabled = true;
-            ui.btnContinuarLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            const btnContinuar = document.getElementById('btn-continuar-login');
+            btnContinuar.disabled = true;
+            btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
             try {
-                // Simulação de chamada de API
-                console.log("Simulando chamada a /api/identificar-cliente com telefone:", telefoneLimpo);
-                // Em um cenário real, a chamada fetch estaria aqui.
-                // const response = await fetch('/api/identificar-cliente', { ... });
+                const response = await fetch('/api/identificar-cliente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telefone: telefoneLimpo })
+                });
                 
-                // Simulação de resposta para um cliente NOVO
-                const data = { success: true, isNew: true, cliente: { telefone: telefoneLimpo } };
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Erro ao verificar telefone.');
+                }
                 
                 clienteAtual = data.cliente;
-                clienteAtual.telefone = telefoneCru; // Mantém a máscara para exibição
+                clienteAtual.telefone = telefoneCru;
 
                 if (data.isNew) {
                     abrirModalEndereco();
@@ -656,161 +685,424 @@
                     abrirModalConfirmarDados(clienteAtual);
                 }
             } catch (error) {
-                alert(error.message || "Erro ao verificar telefone.");
+                alert(error.message);
             } finally {
-                ui.btnContinuarLogin.disabled = false;
-                ui.btnContinuarLogin.textContent = 'Continuar';
+                btnContinuar.disabled = false;
+                btnContinuar.textContent = 'Continuar';
             }
         }
 
-        // ... (as funções salvarEndereco, calcularTotalPedido, finalizarPedidoComPagamento, etc., permanecem as mesmas, mas se beneficiam do cache de UI indiretamente)
+        function salvarEndereco() {
+            const nome = document.getElementById('input-nome').value.trim();
+            const endereco = document.getElementById('input-endereco').value.trim();
+            if (!nome || !endereco) { 
+                alert("Por favor, preencha Nome e Endereço."); 
+                return; 
+            }
+            clienteAtual.nome = nome;
+            clienteAtual.endereco = endereco;
+            clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
+            abrirModalPagamento();
+        }
         
-        // As funções de fechar/abrir modais e a lógica de negócio principal permanecem majoritariamente as mesmas.
-        // O benefício vem do uso das funções otimizadas (debounce, rAF) e dos seletores cacheados.
-        
-        // =================================================================================
-        // FUNÇÕES OTIMIZADAS PARA GERENCIAMENTO DE SCROLL
-        // =================================================================================
-        
+        function calcularTotalPedido() {
+            const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+            return subtotal + TAXA_ENTREGA;
+        }
+
+        async function finalizarPedidoComPagamento() {
+            if (!metodoPagamentoSelecionado) {
+                alert("Por favor, selecione uma forma de pagamento.");
+                return;
+            }
+
+            if (metodoPagamentoSelecionado === 'Dinheiro') {
+                const trocoInput = document.getElementById('troco-input');
+                const valorPedido = calcularTotalPedido();
+                if (trocoInput.value && parseFloat(trocoInput.value.replace(',', '.')) <= valorPedido) {
+                    alert("O valor para troco deve ser maior que o total do pedido!");
+                    return;
+                }
+            }
+
+            const btnConfirmar = document.getElementById('btn-confirmar-pagamento');
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+            const pedido = {
+                cliente: clienteAtual,
+                carrinho: carrinho.map(item => ({
+                    nome: item.nome,
+                    preco: item.preco,
+                    quantidade: item.quantidade,
+                    observacao: item.observacao || ""
+                })),
+                pagamento: metodoPagamentoSelecionado,
+                troco: document.getElementById('troco-input').value.replace('.', ',') || null
+            };
+
+            try {
+                const response = await fetch('/api/criar-pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pedido)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Falha ao criar o pedido. Tente novamente.');
+                }
+
+                const numeroPedido = data.pedidoId;
+                const codigoEntrega = clienteAtual.telefone.slice(-4);
+
+                document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
+                document.getElementById('numero-pedido').textContent = `#${numeroPedido}`;
+                document.getElementById('codigo-entrega').textContent = codigoEntrega;
+
+                fecharModalPagamento();
+                modalConfirmacao.style.display = 'flex';
+                gerenciarBotoesScrollModal();
+
+            } catch (error) {
+                alert(`Ocorreu um erro: ${error.message}`);
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
+            }
+        }
+
+        function fecharModalConfirmacao() {
+            modalConfirmacao.style.display = 'none';
+            carrinho = [];
+            metodoPagamentoSelecionado = null;
+            document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
+            document.querySelector('.troco-container').style.display = 'none';
+            document.getElementById('troco-input').value = '';
+            document.getElementById('troco-calculado').style.display = 'none';
+            atualizarContadorCarrinho();
+            atualizarModalCarrinho();
+            const categoriaPrincipal = botoesCategoria[0];
+            botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
+            categoriaPrincipal.classList.add('ativo');
+            carregarProdutos(categoriaPrincipal.dataset.categoria);
+        }
+
         function gerenciarBotoesScrollModal() {
             const modalContent = document.querySelector('#modalConfirmacao .modal-content');
+            if (!modalContent) return;
+
             const btnScrollUp = document.getElementById('btn-scroll-up');
             const btnScrollDown = document.getElementById('btn-scroll-down');
 
             const atualizarVisibilidade = () => {
+                if (modalConfirmacao.style.display !== 'flex') return;
+                
                 const hasScroll = modalContent.scrollHeight > modalContent.clientHeight;
+                
                 if (!hasScroll) {
                     btnScrollUp.style.display = 'none';
                     btnScrollDown.style.display = 'none';
                     return;
                 }
-                btnScrollUp.style.display = (modalContent.scrollTop > 20) ? 'flex' : 'none';
-                btnScrollDown.style.display = (modalContent.scrollTop + modalContent.clientHeight < modalContent.scrollHeight - 20) ? 'flex' : 'none';
+
+                if (modalContent.scrollTop > 20) {
+                    btnScrollUp.style.display = 'flex';
+                } else {
+                    btnScrollUp.style.display = 'none';
+                }
+
+                if (modalContent.scrollTop + modalContent.clientHeight < modalContent.scrollHeight - 20) {
+                    btnScrollDown.style.display = 'flex';
+                } else {
+                    btnScrollDown.style.display = 'none';
+                }
             };
 
-            btnScrollUp.onclick = () => modalContent.scrollBy({ top: -150, behavior: 'smooth' });
-            btnScrollDown.onclick = () => modalContent.scrollBy({ top: 150, behavior: 'smooth' });
-            
-            // APLICAÇÃO DA OTIMIZAÇÃO DE DEBOUNCE
-            modalContent.addEventListener('scroll', debounce(atualizarVisibilidade, 100));
-            atualizarVisibilidade(); // Chamada inicial
+            const throttledUpdate = throttle(atualizarVisibilidade, 200);
+            throttledFunctions.push(throttledUpdate);
+
+            btnScrollUp.onclick = () => {
+                modalContent.scrollBy({ top: -150, behavior: 'smooth' });
+                const timeoutId = setTimeout(throttledUpdate, 300);
+                activeTimeouts.push(timeoutId);
+            };
+
+            btnScrollDown.onclick = () => {
+                modalContent.scrollBy({ top: 150, behavior: 'smooth' });
+                const timeoutId = setTimeout(throttledUpdate, 300);
+                activeTimeouts.push(timeoutId);
+            };
+
+            registerListener(modalContent, 'scroll', throttledUpdate);
+            throttledUpdate();
         }
 
         function gerenciarBotoesScrollMenu() {
+            const menu = document.querySelector('.menu-categorias');
+            if (!menu) return;
+
             const btnLeft = document.getElementById('menu-scroll-left');
             const btnRight = document.getElementById('menu-scroll-right');
 
             const checkScroll = () => {
-                const hasHorizontalScroll = ui.menuCategorias.scrollWidth > ui.menuCategorias.clientWidth;
+                if (!isElementVisible(menu)) return;
+                
+                const hasHorizontalScroll = menu.scrollWidth > menu.clientWidth;
+
                 if (!hasHorizontalScroll) {
                     btnLeft.style.display = 'none';
                     btnRight.style.display = 'none';
                     return;
                 }
-                btnLeft.style.display = (ui.menuCategorias.scrollLeft > 0) ? 'flex' : 'none';
-                const maxScrollLeft = ui.menuCategorias.scrollWidth - ui.menuCategorias.clientWidth;
-                btnRight.style.display = (ui.menuCategorias.scrollLeft < maxScrollLeft - 1) ? 'flex' : 'none';
+
+                if (menu.scrollLeft > 0) {
+                    btnLeft.style.display = 'flex';
+                } else {
+                    btnLeft.style.display = 'none';
+                }
+                
+                const maxScrollLeft = menu.scrollWidth - menu.clientWidth;
+                if (menu.scrollLeft < maxScrollLeft - 1) {
+                    btnRight.style.display = 'flex';
+                } else {
+                    btnRight.style.display = 'none';
+                }
             };
 
-            btnLeft.addEventListener('click', () => ui.menuCategorias.scrollBy({ left: -150, behavior: 'smooth' }));
-            btnRight.addEventListener('click', () => ui.menuCategorias.scrollBy({ left: 150, behavior: 'smooth' }));
+            const throttledCheck = throttle(checkScroll, 200);
+            throttledFunctions.push(throttledCheck);
+
+            btnLeft.addEventListener('click', () => {
+                menu.scrollBy({ left: -150, behavior: 'smooth' });
+                const timeoutId = setTimeout(throttledCheck, 300);
+                activeTimeouts.push(timeoutId);
+            });
+
+            btnRight.addEventListener('click', () => {
+                menu.scrollBy({ left: 150, behavior: 'smooth' });
+                const timeoutId = setTimeout(throttledCheck, 300);
+                activeTimeouts.push(timeoutId);
+            });
             
-            // APLICAÇÃO DA OTIMIZAÇÃO DE DEBOUNCE
-            ui.menuCategorias.addEventListener('scroll', debounce(checkScroll, 100));
-            window.addEventListener('load', checkScroll);
-            window.addEventListener('resize', debounce(checkScroll, 150)); // Debounce também no resize
+            registerListener(menu, 'scroll', throttledCheck);
+            registerListener(window, 'resize', throttle(throttledCheck, 200));
+            throttledCheck();
+        }
+
+        function abrirModalHistorico() {
+            modalHistorico.style.display = 'flex';
+            if (clienteAtual && clienteAtual.telefone) {
+                carregarHistorico(clienteAtual.telefone);
+                btnBuscarHistorico.style.display = 'none';
+            } else {
+                historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
+                btnBuscarHistorico.style.display = 'block';
+            }
         }
         
-        // ... (O restante das funções como carregarHistorico, abrir/fechar modais, etc., permanecem as mesmas)
-        // A função inicializar() agora amarra tudo junto
-        
+        function fecharModalHistorico() {
+            modalHistorico.style.display = 'none';
+        }
+
+        async function carregarHistorico(telefone) {
+            historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
+            
+            try {
+                const response = await fetch(`/api/historico/${telefone}`);
+                if (!response.ok) {
+                    throw new Error('Não foi possível buscar o histórico. Tente mais tarde.');
+                }
+                const pedidos = await response.json();
+
+                if (pedidos.length === 0) {
+                    historicoContainer.innerHTML = '<p style="text-align:center; color:#888;">Você ainda não fez nenhum pedido conosco.</p>';
+                    return;
+                }
+
+                historicoContainer.innerHTML = '';
+                pedidos.forEach(pedido => {
+                    const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+                    
+                    let itensHtml = '';
+                    pedido.itens.forEach(item => {
+                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
+                    });
+
+                    const pedidoCard = document.createElement('div');
+                    pedidoCard.className = 'pedido-card'; 
+                    pedidoCard.innerHTML = `
+                        <div class="pedido-card-header">
+                            <strong>Data: ${dataFormatada}</strong>
+                            <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <div class="pedido-card-body">
+                            <p><strong>Status:</strong> ${pedido.status || 'Entregue'}</p>
+                            <ul>${itensHtml}</ul>
+                        </div>
+                    `;
+                    historicoContainer.appendChild(pedidoCard);
+                });
+
+            } catch (error) {
+                historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
+            }
+        }
+
+        function limparRecursos() {
+            // Limpar todos os timeouts
+            clearAllTimeouts();
+            
+            // Remover todos os listeners
+            removeAllListeners();
+            
+            // Limpar referências de objetos
+            carrinho = [];
+            clienteAtual = null;
+            metodoPagamentoSelecionado = null;
+            
+            // Fechar todos os modais
+            const modais = document.querySelectorAll('.modal');
+            modais.forEach(modal => modal.style.display = 'none');
+            
+            // Limpar funções throttled
+            throttledFunctions = [];
+        }
+
         function inicializar() {
             carregarProdutos('Burgers 180g');
             atualizarContadorCarrinho();
             gerenciarBotoesScrollMenu();
             
-            // Listener para o input de troco
-            document.getElementById('troco-input').addEventListener('input', function() {
-                // ... (lógica do troco) ...
-            });
+            // Debounce para o input de troco
+            const trocoInput = document.getElementById('troco-input');
+            const trocoHandler = throttle(function() {
+                const trocoValue = parseFloat(this.value);
+                const valorPedido = calcularTotalPedido();
+                const trocoCalculado = document.getElementById('troco-calculado');
+                
+                if (trocoValue && !isNaN(trocoValue)) {
+                    if (trocoValue > valorPedido) {
+                        const trocoValor = trocoValue - valorPedido;
+                        document.getElementById('valor-troco-texto').textContent = 
+                            `Troco: R$ ${trocoValor.toFixed(2).replace('.', ',')}`;
+                        trocoCalculado.style.display = 'block';
+                    } else {
+                        trocoCalculado.style.display = 'none';
+                    }
+                } else {
+                    trocoCalculado.style.display = 'none';
+                }
+            }, 300);
+            
+            registerListener(trocoInput, 'input', trocoHandler);
 
-            // Listener para os botões de categoria
-            ui.botoesCategoria.forEach(botao => {
-                botao.addEventListener('click', () => {
-                    ui.botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
-                    botao.classList.add('ativo');
-                    carregarProdutos(botao.dataset.categoria);
-                });
+            botoesCategoria.forEach(botao => { 
+                const categoriaHandler = () => { 
+                    botoesCategoria.forEach(btn => btn.classList.remove('ativo')); 
+                    botao.classList.add('ativo'); 
+                    carregarProdutos(botao.dataset.categoria); 
+                };
+                
+                registerListener(botao, 'click', categoriaHandler);
             });
             
-            // Listener para adicionar produtos (com gerenciamento de timer)
-            ui.produtosContainer.addEventListener('click', (event) => {
-                const addBtn = event.target.closest('.add-btn');
-                if (addBtn) {
-                    const produtoId = addBtn.dataset.id;
-                    if (addBtnTimers[produtoId]) {
-                        clearTimeout(addBtnTimers[produtoId]);
-                    }
-                    adicionarAoCarrinho(produtoId);
-                    addBtn.innerHTML = '<i class="fas fa-check"></i>';
-                    addBtn.style.background = 'var(--verde)';
-                    addBtnTimers[produtoId] = setTimeout(() => {
-                        addBtn.innerHTML = '+';
-                        addBtn.style.background = 'var(--laranja)';
-                        delete addBtnTimers[produtoId];
+            const produtosClickHandler = (event) => { 
+                const addBtn = event.target.closest('.add-btn'); 
+                if (addBtn) { 
+                    adicionarAoCarrinho(addBtn.dataset.id); 
+                    addBtn.innerHTML = '<i class="fas fa-check"></i>'; 
+                    addBtn.style.background = 'var(--verde)'; 
+                    
+                    const timeoutId = setTimeout(() => { 
+                        addBtn.innerHTML = '+'; 
+                        addBtn.style.background = 'var(--laranja)'; 
                     }, 1000);
-                }
-            });
+                    
+                    activeTimeouts.push(timeoutId);
+                } 
+            };
             
-            // Listener para abrir o carrinho
-            ui.carrinhoBtn.addEventListener('click', () => {
-                if(carrinho.length === 0) {
-                    alert('Seu carrinho está vazio!');
-                    return;
-                }
-                abrirModalCarrinho();
-            });
+            registerListener(produtosContainer, 'click', produtosClickHandler);
             
-            // Listener para o campo de observação
-            ui.carrinhoItensContainer.addEventListener('input', (event) => {
-                if (event.target.classList.contains('obs-input')) {
-                    const itemId = event.target.dataset.id;
-                    const observacaoText = event.target.value;
-                    const itemNoCarrinho = carrinho.find(item => item.id === itemId);
-                    if (itemNoCarrinho) {
-                        itemNoCarrinho.observacao = observacaoText;
+            const carrinhoBtnHandler = () => { 
+                if(carrinho.length === 0) { 
+                    alert('Seu carrinho está vazio!'); 
+                    return; 
+                } 
+                abrirModalCarrinho(); 
+            };
+            
+            registerListener(document.querySelector('.carrinho-btn'), 'click', carrinhoBtnHandler);
+            
+            const carrinhoInputHandler = (event) => { 
+                if (event.target.classList.contains('obs-input')) { 
+                    const itemId = event.target.dataset.id; 
+                    const observacaoText = event.target.value; 
+                    const itemNoCarrinho = carrinho.find(item => item.id === itemId); 
+                    if (itemNoCarrinho) { 
+                        itemNoCarrinho.observacao = observacaoText; 
+                    } 
+                } 
+            };
+            
+            registerListener(carrinhoItensContainer, 'input', carrinhoInputHandler);
+            
+            registerListener(document.getElementById('fechar-carrinho-btn'), 'click', fecharModalCarrinho);
+            registerListener(document.getElementById('btn-voltar-carrinho'), 'click', fecharModalLogin);
+            registerListener(document.getElementById('btn-finalizar-pedido'), 'click', abrirModalLogin);
+            registerListener(document.getElementById('btn-continuar-login'), 'click', verificarTelefone);
+            registerListener(document.getElementById('btn-salvar-endereco'), 'click', salvarEndereco);
+            registerListener(document.getElementById('btn-confirmar-pagamento'), 'click', finalizarPedidoComPagamento);
+            registerListener(document.getElementById('btn-voltar-etapa'), 'click', () => { fecharModalPagamento(); abrirModalLogin(); });
+            registerListener(document.getElementById('btn-novo-pedido'), 'click', fecharModalConfirmacao);
+            
+            document.querySelectorAll('.metodo-pagamento').forEach(metodo => { 
+                const metodoHandler = () => { 
+                    document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo')); 
+                    metodo.classList.add('ativo'); 
+                    metodoPagamentoSelecionado = metodo.dataset.metodo; 
+                    
+                    const trocoContainer = document.querySelector('.troco-container');
+                    if (metodoPagamentoSelecionado === 'Dinheiro') {
+                        trocoContainer.style.display = 'block';
+                        document.getElementById('troco-input').focus();
+                    } else {
+                        trocoContainer.style.display = 'none';
+                        document.getElementById('troco-calculado').style.display = 'none';
                     }
-                }
-            });
-
-            // Mapeamento de todos os outros botões e ações
-            ui.fecharCarrinhoBtn.addEventListener('click', fecharModalCarrinho);
-            ui.btnVoltarCarrinho.addEventListener('click', fecharModalLogin);
-            ui.btnFinalizarPedido.addEventListener('click', abrirModalLogin);
-            ui.btnContinuarLogin.addEventListener('click', verificarTelefone);
-            document.getElementById('btn-salvar-endereco').addEventListener('click', () => { /* ... sua função salvarEndereco ... */ });
-            document.getElementById('btn-confirmar-pagamento').addEventListener('click', () => { /* ... sua função finalizarPedidoComPagamento ... */ });
-            document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
-            ui.btnNovoPedido.addEventListener('click', () => { /* ... sua função fecharModalConfirmacao ... */ });
-            
-            document.querySelectorAll('.metodo-pagamento').forEach(metodo => {
-                metodo.addEventListener('click', () => {
-                    // ... (lógica de seleção de pagamento) ...
-                });
+                };
+                
+                registerListener(metodo, 'click', metodoHandler);
             });
             
-            document.getElementById('btn-dados-corretos').addEventListener('click', abrirModalPagamento);
-            document.getElementById('btn-editar-dados').addEventListener('click', () => {
-                // ... (lógica de editar dados) ...
+            registerListener(document.getElementById('btn-dados-corretos'), 'click', abrirModalPagamento);
+            registerListener(document.getElementById('btn-editar-dados'), 'click', () => {
+                fecharModalConfirmarDados();
+                abrirModalEndereco();
+                document.getElementById('input-nome').value = clienteAtual.nome;
+                document.getElementById('input-endereco').value = clienteAtual.endereco;
+                document.getElementById('input-referencia').value = clienteAtual.referencia || '';
             });
 
-            ui.btnMeusPedidos.addEventListener('click', () => { /* ... sua função abrirModalHistorico ... */ });
-            ui.btnBuscarHistorico.addEventListener('click', () => { fecharModalHistorico(); abrirModalLogin(); });
-            ui.btnFecharHistorico.addEventListener('click', () => { /* ... sua função fecharModalHistorico ... */ });
+            registerListener(btnMeusPedidos, 'click', abrirModalHistorico);
+            registerListener(btnBuscarHistorico, 'click', () => {
+                fecharModalHistorico();
+                abrirModalLogin(); 
+            });
+            registerListener(document.getElementById('btn-fechar-historico'), 'click', fecharModalHistorico);
+            
+            // Limpar recursos quando a página for descarregada
+            registerListener(window, 'beforeunload', limparRecursos);
+            registerListener(window, 'unload', limparRecursos);
         }
 
-        // Inicia a aplicação
-        inicializar();
+        if (document.readyState === 'loading') {
+            registerListener(document, 'DOMContentLoaded', inicializar);
+        } else {
+            inicializar();
+        }
     </script>
 </body>
 </html>
