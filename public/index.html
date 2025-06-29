@@ -221,7 +221,6 @@
         .pedido-card-body ul li {
             margin-bottom: 5px;
         }
-
     </style>
 </head>
 <body>
@@ -445,7 +444,8 @@
         let carrinho = [];
         let clienteAtual = null;
         let metodoPagamentoSelecionado = null;
-        
+        let contextoLogin = 'pedido'; // <-- ALTERAÇÃO 1: Variável de contexto adicionada
+
         // Função de throttling para otimizar eventos
         function throttle(func, limit) {
             let inThrottle;
@@ -511,7 +511,6 @@
             produtosContainer.innerHTML = '';
             const produtosFiltrados = cardapioDB.filter(p => p.categoria === categoriaSelecionada);
             
-            // Usar DocumentFragment para melhor performance
             const fragment = document.createDocumentFragment();
             
             produtosFiltrados.forEach(produto => {
@@ -521,9 +520,9 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                        <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                        <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                     </div>`;
+                                            <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                            <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                         </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
@@ -581,7 +580,6 @@
             document.getElementById('btn-finalizar-pedido').style.display = 'block';
             let subtotal = 0;
             
-            // Usar DocumentFragment para melhor performance
             const fragment = document.createDocumentFragment();
             
             carrinho.forEach(item => {
@@ -657,11 +655,20 @@
                 clienteAtual = data.cliente;
                 clienteAtual.telefone = telefoneCru;
 
-                if (data.isNew) {
-                    abrirModalEndereco();
+                // <-- ALTERAÇÃO 3: Lógica de contexto aplicada
+                if (contextoLogin === 'historico') {
+                    fecharModalLogin();
+                    abrirModalHistorico();
+                    contextoLogin = 'pedido'; // Reseta o contexto
                 } else {
-                    abrirModalConfirmarDados(clienteAtual);
+                    // Lógica padrão de pedido
+                    if (data.isNew) {
+                        abrirModalEndereco();
+                    } else {
+                        abrirModalConfirmarDados(clienteAtual);
+                    }
                 }
+
             } catch (error) {
                 alert(error.message);
             } finally {
@@ -798,7 +805,6 @@
                 }
             };
 
-            // Aplicar throttling
             const throttledUpdate = throttle(atualizarVisibilidade, 100);
 
             btnScrollUp.onclick = () => {
@@ -823,7 +829,6 @@
             const btnRight = document.getElementById('menu-scroll-right');
 
             const checkScroll = () => {
-                // Só calcular se o elemento estiver visível
                 if (!isElementVisible(menu)) return;
                 
                 const hasHorizontalScroll = menu.scrollWidth > menu.clientWidth;
@@ -848,7 +853,6 @@
                 }
             };
 
-            // Aplicar throttling
             const throttledCheck = throttle(checkScroll, 100);
 
             btnLeft.addEventListener('click', () => {
@@ -863,7 +867,6 @@
             
             menu.addEventListener('scroll', throttledCheck);
             
-            // Evento de resize com throttling
             window.addEventListener('resize', throttle(throttledCheck, 200));
             throttledCheck();
         }
@@ -932,7 +935,6 @@
             atualizarContadorCarrinho();
             gerenciarBotoesScrollMenu();
             
-            // Debounce para o input de troco
             const trocoInput = document.getElementById('troco-input');
             trocoInput.addEventListener('input', throttle(function() {
                 const trocoValue = parseFloat(this.value);
@@ -1029,10 +1031,14 @@
             });
 
             btnMeusPedidos.addEventListener('click', abrirModalHistorico);
+            
+            // <-- ALTERAÇÃO 2: Lógica do botão de busca atualizada
             btnBuscarHistorico.addEventListener('click', () => {
+                contextoLogin = 'historico'; // Define o contexto
                 fecharModalHistorico();
                 abrirModalLogin(); 
             });
+
             document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico);
         }
 
