@@ -1,3 +1,15 @@
-node_modules
-session.json
+# Arquivos de dependências e logs
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Arquivo de variáveis de ambiente - NUNCA envie para o repositório!
 .env
+
+# Arquivos de sessão do whatsapp-web.js (usando o volume do Railway)
+# A pasta /data é montada pelo Railway e não deve ser versionada.
+/data/
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
