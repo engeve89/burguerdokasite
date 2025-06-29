@@ -17,50 +17,10 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
         body { background-color: var(--cinza); color: var(--marrom); padding-bottom: 80px; }
         
-        header { background: var(--marrom); color: var(--branco); padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); height: 60px; /* Altura definida para ajudar no alinhamento */ }
-        .logo { font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; height: 100%; }
+        header { background: var(--marrom); color: var(--branco); padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); height: 60px; display: flex; align-items: center; justify-content: center; }
+        .logo { font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
         .logo span { color: var(--laranja); }
         .logo i { margin-right: 10px; color: var(--laranja); }
-
-        /* Estilo Aprimorado para o Botão "Meus Pedidos" */
-        .header-action-btn {
-            position: absolute;
-            top: 50%;
-            right: 15px;
-            transform: translateY(-50%);
-            background-color: rgba(255, 255, 255, 0.1);
-            color: var(--branco);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 8px 14px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px; /* Espaço entre ícone e texto */
-            transition: all 0.3s ease;
-        }
-
-        .header-action-btn:hover {
-            background-color: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .header-action-btn:active {
-            transform: translateY(-50%) scale(0.95);
-        }
-
-        /* Responsividade: Esconde o texto em telas pequenas */
-        @media screen and (max-width: 420px) {
-            .header-action-btn .btn-text {
-                display: none; /* Oculta o texto */
-            }
-            .header-action-btn {
-                gap: 0;
-                padding: 8px 10px; /* Ajusta o padding para o modo ícone */
-            }
-        }
         
         .menu-container { display: flex; align-items: center; background: var(--branco); position: sticky; top: 60px; z-index: 90; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .menu-categorias { flex-grow: 1; display: flex; overflow-x: auto; scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none; }
@@ -205,7 +165,42 @@
             }
         }
         
-        /* Estilos para o Histórico de Pedidos */
+        /* === [NOVO] ESTILOS PARA O BOTÃO MEUS PEDIDOS === */
+        #btn-meus-pedidos {
+            background: none;
+            border: none;
+            color: var(--branco);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px; /* Espaço entre o ícone e o texto */
+            padding: 8px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        #btn-meus-pedidos:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        /* Media Query para responsividade do botão Meus Pedidos */
+        @media screen and (max-width: 380px) {
+            #btn-meus-pedidos .fa-history {
+                display: none; /* Esconde o ícone */
+            }
+            #btn-meus-pedidos {
+                font-size: 14px; /* Diminui o texto */
+                gap: 0;
+                padding: 6px 10px;
+            }
+        }
+        /* ====================================================== */
+
+        /* NOVA ADIÇÃO: Estilos para o Histórico de Pedidos */
         .pedido-card {
             background-color: #f9f9f9;
             border: 1px solid #ddd;
@@ -241,9 +236,9 @@
             <i class="fas fa-hamburger"></i>
             Doka<span>Burger</span>
         </div>
-        <button id="btn-meus-pedidos" class="header-action-btn">
+        <button id="btn-meus-pedidos">
             <i class="fas fa-history"></i>
-            <span class="btn-text">Meus Pedidos</span>
+            <span class="btn-texto"> Meus Pedidos</span>
         </button>
     </header>
 
@@ -420,7 +415,7 @@
         <div class="modal-content" style="overflow-y: auto;">
             <div class="modal-header">
                 <h2>Meu Histórico de Pedidos</h2>
-                <button id="fechar-historico-btn" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
+                <button id="btn-fechar-historico" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
             </div>
             <div id="historico-container">
                 <p>Para ver seu histórico, precisamos do seu WhatsApp.</p>
@@ -508,9 +503,9 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                        <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                        <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                     </div>`;
+                                     <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                     <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                   </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
@@ -572,6 +567,7 @@
             fecharModalLogin();
             fecharModalConfirmarDados();
             modalEndereco.style.display = 'flex';
+            // Acessa o valor bruto do telefone do objeto clienteAtual
             const telefoneBruto = clienteAtual.telefone || ''; 
             document.getElementById('input-contato-endereco').value = telefoneBruto;
             document.getElementById('input-nome').focus();
@@ -605,25 +601,34 @@
             btnContinuar.disabled = true;
             btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
-            // Simulação de chamada de API
-            setTimeout(() => {
-                // Cenário 1: Cliente novo (simulado com números de telefone que terminam em 0)
-                if (telefoneLimpo.endsWith('0')) {
-                    clienteAtual = { telefone: telefoneCru }; // Armazena o telefone com máscara
+            try {
+                const response = await fetch('/api/identificar-cliente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telefone: telefoneLimpo })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Erro ao verificar telefone.');
+                }
+                
+                // Armazena o telefone bruto para exibição, mas a lógica usa o normalizado
+                clienteAtual = data.cliente;
+                clienteAtual.telefone = telefoneCru; // Mantém o telefone com a máscara para exibição
+
+                if (data.isNew) {
                     abrirModalEndereco();
                 } else {
-                // Cenário 2: Cliente existente (simulado)
-                    clienteAtual = {
-                        telefone: telefoneCru, // Armazena o telefone com máscara
-                        nome: "Fulano de Tal",
-                        endereco: "Rua das Flores, 123, Centro",
-                        referencia: "Ao lado da praça"
-                    };
                     abrirModalConfirmarDados(clienteAtual);
                 }
+            } catch (error) {
+                alert(error.message);
+            } finally {
                 btnContinuar.disabled = false;
                 btnContinuar.textContent = 'Continuar';
-            }, 1000); // Atraso de 1 segundo para simular a chamada de rede
+            }
         }
 
         function salvarEndereco() {
@@ -641,6 +646,9 @@
             return subtotal + TAXA_ENTREGA;
         }
 
+        // =================================================================================
+        // FUNÇÃO ATUALIZADA - O CÓDIGO ANTIGO FOI TOTALMENTE SUBSTITUÍDO POR ESTE
+        // =================================================================================
         async function finalizarPedidoComPagamento() {
             if (!metodoPagamentoSelecionado) {
                 alert("Por favor, selecione uma forma de pagamento.");
@@ -660,39 +668,70 @@
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
-            // Simulação de chamada de API
-            setTimeout(() => {
-                try {
-                    const numeroPedido = Math.floor(Math.random() * 9000) + 1000;
-                    const codigoEntrega = clienteAtual.telefone.slice(-4);
+            // Objeto do pedido que será enviado para a API
+            const pedido = {
+                cliente: clienteAtual,
+                carrinho: carrinho.map(item => ({
+                    nome: item.nome,
+                    preco: item.preco,
+                    quantidade: item.quantidade,
+                    observacao: item.observacao || ""
+                })),
+                pagamento: metodoPagamentoSelecionado,
+                troco: document.getElementById('troco-input').value.replace('.', ',') || null
+            };
 
-                    document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
-                    document.getElementById('numero-pedido').textContent = `#${numeroPedido}`;
-                    document.getElementById('codigo-entrega').textContent = codigoEntrega;
+            try {
+                // A CHAMADA REAL PARA A API, AGORA ATIVA
+                const response = await fetch('/api/criar-pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pedido)
+                });
 
-                    fecharModalPagamento();
-                    modalConfirmacao.style.display = 'flex';
-                    gerenciarBotoesScrollModal();
+                const data = await response.json();
 
-                } catch (error) {
-                    alert(`Ocorreu um erro: ${error.message}`);
-                } finally {
-                    btnConfirmar.disabled = false;
-                    btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Falha ao criar o pedido. Tente novamente.');
                 }
-            }, 1500); // Atraso de 1.5 segundos para simular
+
+                // Usando o ID real retornado pelo servidor
+                const numeroPedido = data.pedidoId;
+                const codigoEntrega = clienteAtual.telefone.slice(-4);
+
+                document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
+                document.getElementById('numero-pedido').textContent = `#${numeroPedido}`;
+                document.getElementById('codigo-entrega').textContent = codigoEntrega;
+
+                fecharModalPagamento();
+                modalConfirmacao.style.display = 'flex';
+                gerenciarBotoesScrollModal();
+
+            } catch (error) {
+                alert(`Ocorreu um erro: ${error.message}`);
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
+            }
         }
+        // =================================================================================
+        // FIM DA FUNÇÃO ATUALIZADA
+        // =================================================================================
+
 
         function fecharModalConfirmacao() {
             modalConfirmacao.style.display = 'none';
             carrinho = [];
+            // Não resetar o clienteAtual, para que ele possa ver o histórico
             metodoPagamentoSelecionado = null;
             document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
             document.querySelector('.troco-container').style.display = 'none';
             document.getElementById('troco-input').value = '';
             document.getElementById('troco-calculado').style.display = 'none';
+            // Não limpar o telefone, pois o cliente ainda está "logado"
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
+            // Volta para a categoria principal
             const categoriaPrincipal = botoesCategoria[0];
             botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
             categoriaPrincipal.classList.add('ativo');
@@ -779,13 +818,15 @@
             window.addEventListener('resize', checkScroll);
         }
 
-        // Funções para o Histórico de Pedidos
+        // --- [NOVA ADIÇÃO] Funções para o Histórico de Pedidos ---
         function abrirModalHistorico() {
             modalHistorico.style.display = 'flex';
+            // Se o cliente já se identificou na sessão atual
             if (clienteAtual && clienteAtual.telefone) {
                 carregarHistorico(clienteAtual.telefone);
                 btnBuscarHistorico.style.display = 'none';
             } else {
+                // Se o cliente ainda não se identificou
                 historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
                 btnBuscarHistorico.style.display = 'block';
             }
@@ -798,19 +839,20 @@
         async function carregarHistorico(telefone) {
             historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
             
-            // Simulação de chamada de API
-            setTimeout(() => {
-                // Simulação de dados de histórico
-                const pedidos = [
-                    { dataPedido: '2025-06-20T10:30:00', valorTotal: 54.89, status: 'Entregue', itens: [{ quantidade: 1, nomeProduto: 'Doka Cheddar Bacon 180g', observacao: 'Sem cebola' }, { quantidade: 1, nomeProduto: 'Coca-Cola Original' }] },
-                    { dataPedido: '2025-06-15T19:00:00', valorTotal: 49.90, status: 'Entregue', itens: [{ quantidade: 1, nomeProduto: 'Doka Duty'}] }
-                ];
+            try {
+                // Esta é a nova rota que você criou no seu backend
+                const response = await fetch(`/api/historico/${telefone}`);
+                if (!response.ok) {
+                    throw new Error('Não foi possível buscar o histórico. Tente mais tarde.');
+                }
+                const pedidos = await response.json();
 
                 if (pedidos.length === 0) {
                     historicoContainer.innerHTML = '<p style="text-align:center; color:#888;">Você ainda não fez nenhum pedido conosco.</p>';
                     return;
                 }
 
+                // Limpa o container e começa a construir a lista
                 historicoContainer.innerHTML = '';
                 pedidos.forEach(pedido => {
                     const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
@@ -834,7 +876,11 @@
                     `;
                     historicoContainer.appendChild(pedidoCard);
                 });
-            }, 1000);
+
+            } catch (error) {
+                historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
+                console.error("Erro ao carregar histórico:", error);
+            }
         }
 
         function inicializar() {
@@ -936,15 +982,16 @@
                 document.getElementById('input-referencia').value = clienteAtual.referencia || '';
             });
 
-            // Event Listeners para o Histórico
+            // --- [NOVA ADIÇÃO] Event Listeners para o Histórico ---
             btnMeusPedidos.addEventListener('click', abrirModalHistorico);
+            // CORREÇÃO DO BOTÃO FECHAR (X) DO MODAL DE HISTÓRICO
+            document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico); 
             
             btnBuscarHistorico.addEventListener('click', () => {
+                // Reutiliza o modal de login para pegar o telefone do cliente
                 fecharModalHistorico();
                 abrirModalLogin(); 
             });
-
-            document.getElementById('fechar-historico-btn').addEventListener('click', fecharModalHistorico);
         }
 
         inicializar();
