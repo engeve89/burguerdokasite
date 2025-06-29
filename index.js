@@ -113,15 +113,42 @@ const client = new Client({
   session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
 });
 
-// --- Funções Auxiliares Completas ---
+// --- Funções Auxiliares Atualizadas ---
 
 function normalizarTelefone(telefone) {
   if (typeof telefone !== 'string') return null;
+  
+  // Remove tudo que não for dígito
   let limpo = telefone.replace(/\D/g, '');
-  if (limpo.startsWith('55')) { limpo = limpo.substring(2); }
-  if (limpo.length < 10 || limpo.length > 11) return null;
-  // Adiciona o 55 e formata para o padrão da API do WhatsApp
-  return `55${limpo}`;
+  
+  // Remove o 55 do início se existir
+  if (limpo.startsWith('55')) {
+    limpo = limpo.substring(2);
+  }
+  
+  // Verifica se tem DDD (2 dígitos) + número (8 ou 9 dígitos)
+  if (limpo.length === 10) {
+    // Número com 8 dígitos + 2 do DDD (total 10) - válido para alguns estados
+    const ddd = limpo.substring(0, 2);
+    const numero = limpo.substring(2);
+    
+    // Verifica se o número tem 8 dígitos (padrão para alguns estados)
+    if (numero.length === 8) {
+      return `55${ddd}${numero}`;
+    }
+  } else if (limpo.length === 11) {
+    // Número com 9 dígitos + 2 do DDD (total 11) - padrão mais comum
+    const ddd = limpo.substring(0, 2);
+    const numero = limpo.substring(2);
+    
+    // Verifica se o número tem 9 dígitos
+    if (numero.length === 9) {
+      return `55${ddd}${numero}`;
+    }
+  }
+  
+  // Se não atender aos padrões, retorna null
+  return null;
 }
 
 function gerarCupomFiscal(pedido) {
@@ -241,9 +268,6 @@ app.post('/api/identificar-cliente', async (req, res) => {
     }
 });
 
-// ==============================================================================
-// ROTA ATUALIZADA
-// ==============================================================================
 app.post('/api/criar-pedido', async (req, res) => {
     if (whatsappStatus !== 'ready') { return res.status(503).json({ success: false, message: "Servidor de WhatsApp iniciando. Tente em instantes." }); }
     
@@ -255,11 +279,8 @@ app.post('/api/criar-pedido', async (req, res) => {
         return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
     }
     
-    // --- CORREÇÃO APLICADA AQUI ---
-    // Adiciona o telefone formatado (com máscara) ao objeto do pedido para uso no cupom.
-    // O frontend envia o telefone cru, então usamos ele para exibição.
-    pedido.cliente.telefoneFormatado = cliente.telefone; 
-    // --- FIM DA CORREÇÃO ---
+    // Adiciona o telefone formatado (com máscara) ao objeto do pedido para uso no cupom
+    pedido.cliente.telefoneFormatado = cliente.telefone;
 
     const numeroClienteParaApi = `${telefoneNormalizado.substring(2)}@c.us`;
     let clientDB;
@@ -282,18 +303,59 @@ app.post('/api/criar-pedido', async (req, res) => {
         const pedidoId = resultPedido.rows[0].id;
         logger.info(`Pedido #${pedidoId} registrado no banco de dados.`);
         
-        // Agora o cupom fiscal será gerado com o telefone correto
         const cupomFiscal = gerarCupomFiscal(pedido);
         await client.sendMessage(numeroClienteParaApi, cupomFiscal);
         logger.info(`✅ Cupom enviado para ${numeroClienteParaApi}`);
         
         // Lógica de acompanhamento (com verificação para não reenviar)
         setTimeout(async () => {
-             // ... (Lógica de envio de mensagem de confirmação)
+            try {
+                const clientDB = await pool.connect();
+                const result = await clientDB.query(
+                    'SELECT mensagem_confirmacao_enviada FROM pedidos WHERE id = $1',
+                    [pedidoId]
+                );
+                
+                if (!result.rows[0].mensagem_confirmacao_enviada) {
+                    const msgConfirmacao = `✅ *Doka Burger* - Seu pedido #${pedidoId} foi confirmado e já está em preparo! 🍔⏳\n\nAgradecemos sua preferência!`;
+                    await client.sendMessage(numeroClienteParaApi, msgConfirmacao);
+                    
+                    await clientDB.query(
+                        'UPDATE pedidos SET mensagem_confirmacao_enviada = true WHERE id = $1',
+                        [pedidoId]
+                    );
+                    logger.info(`Mensagem de confirmação enviada para pedido #${pedidoId}`);
+                }
+            } catch (error) {
+                logger.error(`Erro ao enviar mensagem de confirmação: ${error}`);
+            } finally {
+                if (clientDB) clientDB.release();
+            }
         }, 30 * 1000); // 30 segundos
 
         setTimeout(async () => {
-             // ... (Lógica de envio de mensagem de entrega)
+            try {
+                const clientDB = await pool.connect();
+                const result = await clientDB.query(
+                    'SELECT mensagem_entrega_enviada FROM pedidos WHERE id = $1',
+                    [pedidoId]
+                );
+                
+                if (!result.rows[0].mensagem_entrega_enviada) {
+                    const msgEntrega = `🚚 *Doka Burger* - Seu pedido #${pedidoId} saiu para entrega! Deve chegar em instantes!\n\nPor favor, tenha o valor do pedido pronto.`;
+                    await client.sendMessage(numeroClienteParaApi, msgEntrega);
+                    
+                    await clientDB.query(
+                        'UPDATE pedidos SET mensagem_entrega_enviada = true WHERE id = $1',
+                        [pedidoId]
+                    );
+                    logger.info(`Mensagem de entrega enviada para pedido #${pedidoId}`);
+                }
+            } catch (error) {
+                logger.error(`Erro ao enviar mensagem de entrega: ${error}`);
+            } finally {
+                if (clientDB) clientDB.release();
+            }
         }, 30 * 60 * 1000); // 30 minutos
 
         res.status(200).json({ success: true, pedidoId: pedidoId });
@@ -304,14 +366,9 @@ app.post('/api/criar-pedido', async (req, res) => {
         if(clientDB) clientDB.release();
     }
 });
-// ==============================================================================
-// FIM DA ROTA ATUALIZADA
-// ==============================================================================
 
-// Rota para buscar o histórico de pedidos
 app.get('/api/historico/:telefone', async (req, res) => {
     const { telefone } = req.params;
-    // Usa a mesma função de normalização para consistência
     const telefoneNormalizado = normalizarTelefone(telefone);
 
     if (!telefoneNormalizado) {
@@ -361,7 +418,6 @@ app.get('/api/historico/:telefone', async (req, res) => {
         if (clientDB) clientDB.release();
     }
 });
-
 
 // Rota para servir o site
 app.get('/', (req, res) => {
