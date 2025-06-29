@@ -17,39 +17,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
         body { background-color: var(--cinza); color: var(--marrom); padding-bottom: 80px; }
         
-        header {
-            background: var(--marrom);
-            color: var(--branco);
-            padding: 15px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        #btn-meus-pedidos {
-            background: transparent;
-            border: 1px solid var(--laranja);
-            color: var(--branco);
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        #btn-meus-pedidos:hover {
-            background-color: var(--laranja);
-            color: var(--marrom);
-        }
-
+        header { background: var(--marrom); color: var(--branco); padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .logo { font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
         .logo span { color: var(--laranja); }
         .logo i { margin-right: 10px; color: var(--laranja); }
@@ -60,6 +28,7 @@
         .categoria-btn { padding: 12px 15px; margin: 8px 5px; background: var(--cinza); border: none; border-radius: 20px; font-weight: bold; white-space: nowrap; cursor: pointer; font-size: 14px; transition: all 0.2s; }
         .categoria-btn.ativo { background: var(--laranja); color: var(--branco); }
         
+        /* Estilo para os botões de rolagem do MENU */
         .menu-scroll-btn {
             display: none;
             align-items: center;
@@ -148,6 +117,7 @@
         .info-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
         .success-box { background-color: #FFF3E0; padding: 15px; border-radius: 10px; margin: 15px 0; }
         
+        /* Estilo para os botões de rolagem do modal */
         .modal-scroll-btn {
             position: absolute;
             right: 15px;
@@ -195,6 +165,7 @@
             }
         }
         
+        /* NOVA ADIÇÃO: Estilos para o Histórico de Pedidos */
         .pedido-card {
             background-color: #f9f9f9;
             border: 1px solid #ddd;
@@ -230,7 +201,7 @@
             <i class="fas fa-hamburger"></i>
             Doka<span>Burger</span>
         </div>
-        <button id="btn-meus-pedidos">
+        <button id="btn-meus-pedidos" style="background:none; border:none; color:white; font-size:16px; cursor:pointer; position: absolute; right: 15px; top: 20px;">
             <i class="fas fa-history"></i> Meus Pedidos
         </button>
     </header>
@@ -408,7 +379,7 @@
         <div class="modal-content" style="overflow-y: auto;">
             <div class="modal-header">
                 <h2>Meu Histórico de Pedidos</h2>
-                <button id="btn-fechar-historico" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
+                <button onclick="fecharModalHistorico()" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
             </div>
             <div id="historico-container">
                 <p>Para ver seu histórico, precisamos do seu WhatsApp.</p>
@@ -437,6 +408,8 @@
         const carrinhoTaxaEntrega = document.getElementById('carrinho-taxa-entrega');
         const carrinhoTotalValor = document.getElementById('carrinho-total-valor');
         const btnNovoPedido = document.getElementById('btn-novo-pedido');
+        
+        // --- [NOVA ADIÇÃO] Constantes para o Histórico ---
         const modalHistorico = document.getElementById('modalHistorico');
         const historicoContainer = document.getElementById('historico-container');
         const btnMeusPedidos = document.getElementById('btn-meus-pedidos');
@@ -445,55 +418,8 @@
         let carrinho = [];
         let clienteAtual = null;
         let metodoPagamentoSelecionado = null;
-        let activeTimeouts = [];
-        let activeListeners = [];
-        let throttledFunctions = [];
         
-        // Função de throttling otimizada
-        function throttle(func, limit) {
-            let inThrottle;
-            return function() {
-                const args = arguments;
-                const context = this;
-                if (!inThrottle) {
-                    func.apply(context, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        }
-
-        // Verifica se um elemento está visível
-        function isElementVisible(el) {
-            const rect = el.getBoundingClientRect();
-            return (
-                rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
-                rect.bottom >= 0
-            );
-        }
-
-        // Limpa todos os timeouts ativos
-        function clearAllTimeouts() {
-            activeTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-            activeTimeouts = [];
-        }
-
-        // Limpa todos os event listeners
-        function removeAllListeners() {
-            activeListeners.forEach(({element, event, handler}) => {
-                element.removeEventListener(event, handler);
-            });
-            activeListeners = [];
-        }
-
-        // Registra um listener para remoção posterior
-        function registerListener(element, event, handler) {
-            element.addEventListener(event, handler);
-            activeListeners.push({element, event, handler});
-        }
-
         const cardapioDB = [
-            // ... (mantido igual ao original) ...
             // Burgers 180g
             { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
             { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
@@ -534,9 +460,6 @@
         function carregarProdutos(categoriaSelecionada) {
             produtosContainer.innerHTML = '';
             const produtosFiltrados = cardapioDB.filter(p => p.categoria === categoriaSelecionada);
-            
-            const fragment = document.createDocumentFragment();
-            
             produtosFiltrados.forEach(produto => {
                 const card = document.createElement('div');
                 card.className = 'produto-card';
@@ -550,24 +473,14 @@
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
-                fragment.appendChild(card);
+                produtosContainer.appendChild(card);
             });
-            
-            produtosContainer.appendChild(fragment);
         }
 
         function adicionarAoCarrinho(id) {
             const produto = cardapioDB.find(p => p.id === id);
             const itemExistente = carrinho.find(item => item.id === id);
-            if (itemExistente) { 
-                itemExistente.quantidade++; 
-            } else { 
-                carrinho.push({ 
-                    ...produto, 
-                    quantidade: 1, 
-                    observacao: "" 
-                }); 
-            }
+            if (itemExistente) { itemExistente.quantidade++; } else { carrinho.push({ ...produto, quantidade: 1, observacao: "" }); }
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
         }
@@ -575,19 +488,14 @@
         function removerDoCarrinho(id, removerTudo = false) {
             const itemIndex = carrinho.findIndex(item => item.id === id);
             if (itemIndex > -1) {
-                if (removerTudo || carrinho[itemIndex].quantidade === 1) { 
-                    carrinho.splice(itemIndex, 1); 
-                } else { 
-                    carrinho[itemIndex].quantidade--; 
-                }
+                if (removerTudo || carrinho[itemIndex].quantidade === 1) { carrinho.splice(itemIndex, 1); } else { carrinho[itemIndex].quantidade--; }
             }
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
         }
 
         function atualizarContadorCarrinho() {
-            const totalItens = carrinho.reduce((total, item) => total + item.quantidade, 0);
-            contadorCarrinho.textContent = totalItens;
+            contadorCarrinho.textContent = carrinho.reduce((total, item) => total + item.quantidade, 0);
         }
 
         function atualizarModalCarrinho() {
@@ -598,28 +506,21 @@
                 carrinhoSubtotal.textContent = "R$ 0,00";
                 carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
                 carrinhoTotalValor.textContent = "R$ 0,00";
-                return;
+            } else {
+                document.getElementById('btn-finalizar-pedido').style.display = 'block';
+                let subtotal = 0;
+                carrinho.forEach(item => {
+                    subtotal += item.preco * item.quantidade;
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'carrinho-item';
+                    itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
+                    carrinhoItensContainer.appendChild(itemDiv);
+                });
+                const total = subtotal + TAXA_ENTREGA;
+                carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+                carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
+                carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
             }
-
-            document.getElementById('btn-finalizar-pedido').style.display = 'block';
-            let subtotal = 0;
-            
-            const fragment = document.createDocumentFragment();
-            
-            carrinho.forEach(item => {
-                subtotal += item.preco * item.quantidade;
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'carrinho-item';
-                itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
-                fragment.appendChild(itemDiv);
-            });
-            
-            carrinhoItensContainer.appendChild(fragment);
-            
-            const total = subtotal + TAXA_ENTREGA;
-            carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-            carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
-            carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         }
         
         function abrirModalCarrinho() { modalCarrinho.style.display = 'flex'; }
@@ -630,6 +531,7 @@
             fecharModalLogin();
             fecharModalConfirmarDados();
             modalEndereco.style.display = 'flex';
+            // Acessa o valor bruto do telefone do objeto clienteAtual
             const telefoneBruto = clienteAtual.telefone || ''; 
             document.getElementById('input-contato-endereco').value = telefoneBruto;
             document.getElementById('input-nome').focus();
@@ -676,8 +578,9 @@
                     throw new Error(data.message || 'Erro ao verificar telefone.');
                 }
                 
+                // Armazena o telefone bruto para exibição, mas a lógica usa o normalizado
                 clienteAtual = data.cliente;
-                clienteAtual.telefone = telefoneCru;
+                clienteAtual.telefone = telefoneCru; // Mantém o telefone com a máscara para exibição
 
                 if (data.isNew) {
                     abrirModalEndereco();
@@ -695,10 +598,7 @@
         function salvarEndereco() {
             const nome = document.getElementById('input-nome').value.trim();
             const endereco = document.getElementById('input-endereco').value.trim();
-            if (!nome || !endereco) { 
-                alert("Por favor, preencha Nome e Endereço."); 
-                return; 
-            }
+            if (!nome || !endereco) { alert("Por favor, preencha Nome e Endereço."); return; }
             clienteAtual.nome = nome;
             clienteAtual.endereco = endereco;
             clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
@@ -710,6 +610,9 @@
             return subtotal + TAXA_ENTREGA;
         }
 
+        // =================================================================================
+        // FUNÇÃO ATUALIZADA - O CÓDIGO ANTIGO FOI TOTALMENTE SUBSTITUÍDO POR ESTE
+        // =================================================================================
         async function finalizarPedidoComPagamento() {
             if (!metodoPagamentoSelecionado) {
                 alert("Por favor, selecione uma forma de pagamento.");
@@ -729,6 +632,7 @@
             btnConfirmar.disabled = true;
             btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
+            // Objeto do pedido que será enviado para a API
             const pedido = {
                 cliente: clienteAtual,
                 carrinho: carrinho.map(item => ({
@@ -742,6 +646,7 @@
             };
 
             try {
+                // A CHAMADA REAL PARA A API, AGORA ATIVA
                 const response = await fetch('/api/criar-pedido', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -754,6 +659,7 @@
                     throw new Error(data.message || 'Falha ao criar o pedido. Tente novamente.');
                 }
 
+                // Usando o ID real retornado pelo servidor
                 const numeroPedido = data.pedidoId;
                 const codigoEntrega = clienteAtual.telefone.slice(-4);
 
@@ -772,17 +678,24 @@
                 btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
             }
         }
+        // =================================================================================
+        // FIM DA FUNÇÃO ATUALIZADA
+        // =================================================================================
+
 
         function fecharModalConfirmacao() {
             modalConfirmacao.style.display = 'none';
             carrinho = [];
+            // Não resetar o clienteAtual, para que ele possa ver o histórico
             metodoPagamentoSelecionado = null;
             document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
             document.querySelector('.troco-container').style.display = 'none';
             document.getElementById('troco-input').value = '';
             document.getElementById('troco-calculado').style.display = 'none';
+            // Não limpar o telefone, pois o cliente ainda está "logado"
             atualizarContadorCarrinho();
             atualizarModalCarrinho();
+            // Volta para a categoria principal
             const categoriaPrincipal = botoesCategoria[0];
             botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
             categoriaPrincipal.classList.add('ativo');
@@ -791,14 +704,10 @@
 
         function gerenciarBotoesScrollModal() {
             const modalContent = document.querySelector('#modalConfirmacao .modal-content');
-            if (!modalContent) return;
-
             const btnScrollUp = document.getElementById('btn-scroll-up');
             const btnScrollDown = document.getElementById('btn-scroll-down');
 
             const atualizarVisibilidade = () => {
-                if (modalConfirmacao.style.display !== 'flex') return;
-                
                 const hasScroll = modalContent.scrollHeight > modalContent.clientHeight;
                 
                 if (!hasScroll) {
@@ -820,35 +729,24 @@
                 }
             };
 
-            const throttledUpdate = throttle(atualizarVisibilidade, 200);
-            throttledFunctions.push(throttledUpdate);
-
             btnScrollUp.onclick = () => {
                 modalContent.scrollBy({ top: -150, behavior: 'smooth' });
-                const timeoutId = setTimeout(throttledUpdate, 300);
-                activeTimeouts.push(timeoutId);
             };
 
             btnScrollDown.onclick = () => {
                 modalContent.scrollBy({ top: 150, behavior: 'smooth' });
-                const timeoutId = setTimeout(throttledUpdate, 300);
-                activeTimeouts.push(timeoutId);
             };
 
-            registerListener(modalContent, 'scroll', throttledUpdate);
-            throttledUpdate();
+            modalContent.addEventListener('scroll', atualizarVisibilidade);
+            atualizarVisibilidade();
         }
 
         function gerenciarBotoesScrollMenu() {
             const menu = document.querySelector('.menu-categorias');
-            if (!menu) return;
-
             const btnLeft = document.getElementById('menu-scroll-left');
             const btnRight = document.getElementById('menu-scroll-right');
 
             const checkScroll = () => {
-                if (!isElementVisible(menu)) return;
-                
                 const hasHorizontalScroll = menu.scrollWidth > menu.clientWidth;
 
                 if (!hasHorizontalScroll) {
@@ -871,32 +769,28 @@
                 }
             };
 
-            const throttledCheck = throttle(checkScroll, 200);
-            throttledFunctions.push(throttledCheck);
-
             btnLeft.addEventListener('click', () => {
                 menu.scrollBy({ left: -150, behavior: 'smooth' });
-                const timeoutId = setTimeout(throttledCheck, 300);
-                activeTimeouts.push(timeoutId);
             });
 
             btnRight.addEventListener('click', () => {
                 menu.scrollBy({ left: 150, behavior: 'smooth' });
-                const timeoutId = setTimeout(throttledCheck, 300);
-                activeTimeouts.push(timeoutId);
             });
             
-            registerListener(menu, 'scroll', throttledCheck);
-            registerListener(window, 'resize', throttle(throttledCheck, 200));
-            throttledCheck();
+            menu.addEventListener('scroll', checkScroll);
+            window.addEventListener('load', checkScroll);
+            window.addEventListener('resize', checkScroll);
         }
 
+        // --- [NOVA ADIÇÃO] Funções para o Histórico de Pedidos ---
         function abrirModalHistorico() {
             modalHistorico.style.display = 'flex';
+            // Se o cliente já se identificou na sessão atual
             if (clienteAtual && clienteAtual.telefone) {
                 carregarHistorico(clienteAtual.telefone);
                 btnBuscarHistorico.style.display = 'none';
             } else {
+                // Se o cliente ainda não se identificou
                 historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
                 btnBuscarHistorico.style.display = 'block';
             }
@@ -910,6 +804,7 @@
             historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
             
             try {
+                // Esta é a nova rota que você criou no seu backend
                 const response = await fetch(`/api/historico/${telefone}`);
                 if (!response.ok) {
                     throw new Error('Não foi possível buscar o histórico. Tente mais tarde.');
@@ -921,6 +816,7 @@
                     return;
                 }
 
+                // Limpa o container e começa a construir a lista
                 historicoContainer.innerHTML = '';
                 pedidos.forEach(pedido => {
                     const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
@@ -947,27 +843,8 @@
 
             } catch (error) {
                 historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
+                console.error("Erro ao carregar histórico:", error);
             }
-        }
-
-        function limparRecursos() {
-            // Limpar todos os timeouts
-            clearAllTimeouts();
-            
-            // Remover todos os listeners
-            removeAllListeners();
-            
-            // Limpar referências de objetos
-            carrinho = [];
-            clienteAtual = null;
-            metodoPagamentoSelecionado = null;
-            
-            // Fechar todos os modais
-            const modais = document.querySelectorAll('.modal');
-            modais.forEach(modal => modal.style.display = 'none');
-            
-            // Limpar funções throttled
-            throttledFunctions = [];
         }
 
         function inicializar() {
@@ -975,16 +852,14 @@
             atualizarContadorCarrinho();
             gerenciarBotoesScrollMenu();
             
-            // Debounce para o input de troco
-            const trocoInput = document.getElementById('troco-input');
-            const trocoHandler = throttle(function() {
-                const trocoValue = parseFloat(this.value);
+            document.getElementById('troco-input').addEventListener('input', function() {
+                const trocoInput = parseFloat(this.value);
                 const valorPedido = calcularTotalPedido();
                 const trocoCalculado = document.getElementById('troco-calculado');
                 
-                if (trocoValue && !isNaN(trocoValue)) {
-                    if (trocoValue > valorPedido) {
-                        const trocoValor = trocoValue - valorPedido;
+                if (trocoInput && !isNaN(trocoInput)) {
+                    if (trocoInput > valorPedido) {
+                        const trocoValor = trocoInput - valorPedido;
                         document.getElementById('valor-troco-texto').textContent = 
                             `Troco: R$ ${trocoValor.toFixed(2).replace('.', ',')}`;
                         trocoCalculado.style.display = 'block';
@@ -994,49 +869,38 @@
                 } else {
                     trocoCalculado.style.display = 'none';
                 }
-            }, 300);
-            
-            registerListener(trocoInput, 'input', trocoHandler);
+            });
 
             botoesCategoria.forEach(botao => { 
-                const categoriaHandler = () => { 
+                botao.addEventListener('click', () => { 
                     botoesCategoria.forEach(btn => btn.classList.remove('ativo')); 
                     botao.classList.add('ativo'); 
                     carregarProdutos(botao.dataset.categoria); 
-                };
-                
-                registerListener(botao, 'click', categoriaHandler);
+                }); 
             });
             
-            const produtosClickHandler = (event) => { 
+            produtosContainer.addEventListener('click', (event) => { 
                 const addBtn = event.target.closest('.add-btn'); 
                 if (addBtn) { 
                     adicionarAoCarrinho(addBtn.dataset.id); 
                     addBtn.innerHTML = '<i class="fas fa-check"></i>'; 
                     addBtn.style.background = 'var(--verde)'; 
-                    
-                    const timeoutId = setTimeout(() => { 
+                    setTimeout(() => { 
                         addBtn.innerHTML = '+'; 
                         addBtn.style.background = 'var(--laranja)'; 
-                    }, 1000);
-                    
-                    activeTimeouts.push(timeoutId);
+                    }, 1000); 
                 } 
-            };
+            });
             
-            registerListener(produtosContainer, 'click', produtosClickHandler);
-            
-            const carrinhoBtnHandler = () => { 
+            document.querySelector('.carrinho-btn').addEventListener('click', () => { 
                 if(carrinho.length === 0) { 
                     alert('Seu carrinho está vazio!'); 
                     return; 
                 } 
                 abrirModalCarrinho(); 
-            };
+            });
             
-            registerListener(document.querySelector('.carrinho-btn'), 'click', carrinhoBtnHandler);
-            
-            const carrinhoInputHandler = (event) => { 
+            carrinhoItensContainer.addEventListener('input', (event) => { 
                 if (event.target.classList.contains('obs-input')) { 
                     const itemId = event.target.dataset.id; 
                     const observacaoText = event.target.value; 
@@ -1045,21 +909,19 @@
                         itemNoCarrinho.observacao = observacaoText; 
                     } 
                 } 
-            };
+            });
             
-            registerListener(carrinhoItensContainer, 'input', carrinhoInputHandler);
-            
-            registerListener(document.getElementById('fechar-carrinho-btn'), 'click', fecharModalCarrinho);
-            registerListener(document.getElementById('btn-voltar-carrinho'), 'click', fecharModalLogin);
-            registerListener(document.getElementById('btn-finalizar-pedido'), 'click', abrirModalLogin);
-            registerListener(document.getElementById('btn-continuar-login'), 'click', verificarTelefone);
-            registerListener(document.getElementById('btn-salvar-endereco'), 'click', salvarEndereco);
-            registerListener(document.getElementById('btn-confirmar-pagamento'), 'click', finalizarPedidoComPagamento);
-            registerListener(document.getElementById('btn-voltar-etapa'), 'click', () => { fecharModalPagamento(); abrirModalLogin(); });
-            registerListener(document.getElementById('btn-novo-pedido'), 'click', fecharModalConfirmacao);
+            document.getElementById('fechar-carrinho-btn').addEventListener('click', fecharModalCarrinho);
+            document.getElementById('btn-voltar-carrinho').addEventListener('click', fecharModalLogin);
+            document.getElementById('btn-finalizar-pedido').addEventListener('click', abrirModalLogin);
+            document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
+            document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
+            document.getElementById('btn-confirmar-pagamento').addEventListener('click', finalizarPedidoComPagamento);
+            document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
+            document.getElementById('btn-novo-pedido').addEventListener('click', fecharModalConfirmacao);
             
             document.querySelectorAll('.metodo-pagamento').forEach(metodo => { 
-                const metodoHandler = () => { 
+                metodo.addEventListener('click', () => { 
                     document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo')); 
                     metodo.classList.add('ativo'); 
                     metodoPagamentoSelecionado = metodo.dataset.metodo; 
@@ -1072,13 +934,11 @@
                         trocoContainer.style.display = 'none';
                         document.getElementById('troco-calculado').style.display = 'none';
                     }
-                };
-                
-                registerListener(metodo, 'click', metodoHandler);
+                }); 
             });
             
-            registerListener(document.getElementById('btn-dados-corretos'), 'click', abrirModalPagamento);
-            registerListener(document.getElementById('btn-editar-dados'), 'click', () => {
+            document.getElementById('btn-dados-corretos').addEventListener('click', abrirModalPagamento);
+            document.getElementById('btn-editar-dados').addEventListener('click', () => {
                 fecharModalConfirmarDados();
                 abrirModalEndereco();
                 document.getElementById('input-nome').value = clienteAtual.nome;
@@ -1086,23 +946,17 @@
                 document.getElementById('input-referencia').value = clienteAtual.referencia || '';
             });
 
-            registerListener(btnMeusPedidos, 'click', abrirModalHistorico);
-            registerListener(btnBuscarHistorico, 'click', () => {
+            // --- [NOVA ADIÇÃO] Event Listeners para o Histórico ---
+            btnMeusPedidos.addEventListener('click', abrirModalHistorico);
+            
+            btnBuscarHistorico.addEventListener('click', () => {
+                // Reutiliza o modal de login para pegar o telefone do cliente
                 fecharModalHistorico();
                 abrirModalLogin(); 
             });
-            registerListener(document.getElementById('btn-fechar-historico'), 'click', fecharModalHistorico);
-            
-            // Limpar recursos quando a página for descarregada
-            registerListener(window, 'beforeunload', limparRecursos);
-            registerListener(window, 'unload', limparRecursos);
         }
 
-        if (document.readyState === 'loading') {
-            registerListener(document, 'DOMContentLoaded', inicializar);
-        } else {
-            inicializar();
-        }
+        inicializar();
     </script>
 </body>
 </html>
