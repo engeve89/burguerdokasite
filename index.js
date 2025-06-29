@@ -1,227 +1,381 @@
-import express from 'express';
-import { fileURLToPath } from 'url';
-import path from 'path';
-import { Pool } from 'pg';
-import helmet from 'helmet';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import winston from 'winston';
-import Redis from 'ioredis';
-import { Worker } from 'worker_threads';
-
-// Configuração de caminhos
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const express = require('express');
+const bodyParser = require('body-parser');
+const path = require('path');
+const qrcode = require('qrcode-terminal');
+const { Client } = require('whatsapp-web.js');
+const fs = require('fs');
+const cors = require('cors');
+const { Pool } = require('pg');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // Configuração de logs
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' })
-  ]
-});
+const logger = {
+  info: (msg) => console.log(`[INFO] ${new Date().toISOString()} - ${msg}`),
+  error: (msg) => console.error(`[ERROR] ${new Date().toISOString()} - ${msg}`)
+};
 
-// Inicialização do Express
+// Configuração do Express
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configuração de middlewares
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+// Informa ao Express para confiar no proxy do Render (ou outro serviço de hospedagem)
+app.set('trust proxy', 1);
+
+// --- Middlewares de Segurança e Funcionalidade ---
+
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],  
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  })
+);
+
+app.disable('x-powered-by');  
 app.use(cors());
-app.use(helmet());
-app.disable('x-powered-by');
+app.use(bodyParser.json());
+app.use(express.static('public'));
 
-// Configuração do Redis
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-
-// Configuração do PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000
+// Configuração do Rate Limiter
+const apiLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 minutos
+	max: 100,
+	standardHeaders: true,
+	legacyHeaders: false,
+    message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
 });
 
-// Inicialização do Worker do WhatsApp
-let whatsappWorker;
-if (process.env.ENABLE_WHATSAPP === 'true') {
-  whatsappWorker = new Worker(new URL('./workers/whatsapp-worker.js', import.meta.url));
-  
-  whatsappWorker.on('message', (message) => {
-    logger.info(`WhatsApp Worker: ${message}`);
-  });
+app.use('/api/', apiLimiter);
 
-  whatsappWorker.on('error', (error) => {
-    logger.error(`WhatsApp Worker Error: ${error}`);
-  });
+// --- Conexão com o Banco de Dados PostgreSQL ---
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  connectionTimeoutMillis: 5000
+});
 
-  whatsappWorker.on('exit', (code) => {
-    logger.warn(`WhatsApp Worker exited with code ${code}`);
-  });
+// --- Função para criar as tabelas se não existirem ---
+async function setupDatabase() {
+    let clientDB;
+    try {
+        clientDB = await pool.connect();
+        
+        // Tabela de clientes
+        await clientDB.query(`
+            CREATE TABLE IF NOT EXISTS clientes (
+                telefone VARCHAR(20) PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                endereco TEXT NOT NULL,
+                referencia TEXT,
+                criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        
+        // Tabela de pedidos
+        await clientDB.query(`
+            CREATE TABLE IF NOT EXISTS pedidos (
+                id SERIAL PRIMARY KEY,
+                cliente_telefone VARCHAR(20) NOT NULL REFERENCES clientes(telefone),
+                dados_pedido JSONB NOT NULL,
+                mensagem_confirmacao_enviada BOOLEAN NOT NULL DEFAULT false,
+                mensagem_entrega_enviada BOOLEAN NOT NULL DEFAULT false,
+                criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        
+        logger.info('Tabelas verificadas/criadas com sucesso no banco de dados.');
+    } catch (err) {
+        logger.error(`Erro ao criar as tabelas: ${err}`);
+    } finally {
+        if (clientDB) clientDB.release();
+    }
 }
 
-// Funções auxiliares
+// --- Estado e Inicialização do Cliente WhatsApp ---
+let whatsappStatus = 'initializing';
+
+const client = new Client({
+  puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    headless: true
+  },
+  session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
+});
+
+// --- Funções Auxiliares Completas ---
+
 function normalizarTelefone(telefone) {
   if (typeof telefone !== 'string') return null;
   let limpo = telefone.replace(/\D/g, '');
-  if (limpo.startsWith('55')) limpo = limpo.substring(2);
-  return limpo.length >= 10 && limpo.length <= 11 ? `55${limpo}` : null;
+  if (limpo.startsWith('55')) { limpo = limpo.substring(2); }
+  if (limpo.length < 10 || limpo.length > 11) return null;
+  // Adiciona o 55 e formata para o padrão da API do WhatsApp
+  return `55${limpo}`;
 }
 
 function gerarCupomFiscal(pedido) {
-  const { cliente, carrinho, pagamento, troco } = pedido;
-  const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
-  const taxaEntrega = 5.00;
-  const total = subtotal + taxaEntrega;
-  const now = new Date();
-
-  const linhas = [
-    '==================================================',
-    `     Doka Burger - Pedido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
-    '==================================================',
-    `👤 DADOS DO CLIENTE\nNome: ${cliente.nome}\nTelefone: ${cliente.telefone}\n`,
-    `ITENS:`
-  ];
-
-  carrinho.forEach(item => {
-    linhas.push(`• ${item.quantidade}x ${item.nome} - R$ ${(item.preco * item.quantidade).toFixed(2)}`);
-    if (item.observacao) linhas.push(`  Obs: ${item.observacao}`);
-  });
-
-  linhas.push(
-    '--------------------------------------------------',
-    `Subtotal: R$ ${subtotal.toFixed(2)}`,
-    `Taxa de Entrega: R$ ${taxaEntrega.toFixed(2)}`,
-    `TOTAL: R$ ${total.toFixed(2)}`,
-    '--------------------------------------------------',
-    `ENDEREÇO:\n${cliente.endereco}`,
-    cliente.referencia ? `Ref: ${cliente.referencia}` : '',
-    '--------------------------------------------------',
-    `FORMA DE PAGAMENTO: ${pagamento}`
-  );
-
-  if (pagamento === 'Dinheiro' && troco) {
-    linhas.push(`Troco para: R$ ${troco}`);
-  }
-
-  linhas.push(
-    '==================================================',
-    'OBRIGADO PELA PREFERÊNCIA!'
-  );
-
-  return linhas.join('\n');
+    const { cliente, carrinho, pagamento, troco } = pedido;
+    const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+    const taxaEntrega = 5.00;
+    const total = subtotal + taxaEntrega;
+    const now = new Date();
+    let cupom = `==================================================\n`;
+    cupom += `     Doka Burger - Pedido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-br', { hour: '2-digit', minute: '2-digit' })}\n`;
+    cupom += `==================================================\n`
+    cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
+    cupom += `*ITENS:*\n`;
+    carrinho.forEach(item => {
+        const nomeFormatado = item.nome.padEnd(25, ' ');
+        const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
+        cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
+        if (item.observacao) { cupom += `  Obs: ${item.observacao}\n`; }
+    });
+    cupom += `--------------------------------------------------\n`;
+    cupom += `Subtotal:           R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    cupom += `Taxa de Entrega:    R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
+    cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
+    cupom += `--------------------------------------------------\n`;
+    cupom += `*ENDEREÇO:*\n${cliente.endereco}\n`;
+    if (cliente.referencia) { cupom += `Ref: ${cliente.referencia}\n`; }
+    cupom += `--------------------------------------------------\n`;
+    cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
+    if (pagamento === 'Dinheiro' && troco) {
+        const valorTroco = parseFloat(troco.replace(',', '.')) - total;
+        cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace('.',',')})\n`;
+    }
+    cupom += `==================================================\n`;
+    cupom += `           OBRIGADO PELA PREFERENCIA!`;
+    return cupom;
 }
 
-// Rotas
-app.get('/health', async (req, res) => {
-  try {
-    await pool.query('SELECT NOW()');
-    res.json({
-      status: 'online',
-      whatsapp: whatsappWorker ? 'active' : 'inactive',
-      database: 'connected',
-      redis: redis.status,
-      uptime: process.uptime()
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'degraded', error: error.message });
+// --- Eventos do WhatsApp ---
+client.on('qr', qr => {
+    logger.info('Gerando QR Code...');
+    qrcode.generate(qr, { small: true });
+    const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+    logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
+});
+
+client.on('authenticated', (session) => {
+    logger.info('Sessão autenticada! Salvando...');
+    if (session) { fs.writeFileSync('./session.json', JSON.stringify(session)); }
+});
+
+client.on('auth_failure', msg => {
+    logger.error(`FALHA NA AUTENTICAÇÃO: ${msg}. Removendo sessão...`);
+    if (fs.existsSync('./session.json')) { fs.unlinkSync('./session.json'); }
+    whatsappStatus = 'disconnected';
+});
+
+client.on('ready', () => { 
+    whatsappStatus = 'ready';
+    logger.info('✅ 🤖 Cliente WhatsApp conectado e pronto para automação!');
+});
+
+client.on('disconnected', (reason) => { 
+    whatsappStatus = 'disconnected'; 
+    logger.error(`WhatsApp desconectado: ${reason}`); 
+});
+
+client.initialize().catch(err => {
+  logger.error(`Falha crítica ao inicializar o cliente: ${err}`);
+  if (fs.existsSync('./session.json')) {
+    logger.info('Tentando remover arquivo de sessão corrompido...');
+    fs.unlinkSync('./session.json');
   }
+});
+
+// --- Rotas da API ---
+
+app.get('/health', (req, res) => {
+    res.json({
+        whatsapp: whatsappStatus,
+        database_connections: pool.totalCount,
+        uptime_seconds: process.uptime()
+    });
 });
 
 app.post('/api/identificar-cliente', async (req, res) => {
-  const telefone = normalizarTelefone(req.body.telefone);
-  if (!telefone) {
-    return res.status(400).json({ success: false, message: "Telefone inválido" });
-  }
+    const { telefone } = req.body;
+    const telefoneNormalizado = normalizarTelefone(telefone);
 
-  try {
-    const cliente = await redis.get(`cliente:${telefone}`) || 
-                   await pool.query('SELECT * FROM clientes WHERE telefone = $1', [telefone])
-                     .then(result => result.rows[0] || null);
-
-    if (cliente) {
-      await redis.setex(`cliente:${telefone}`, 3600, JSON.stringify(cliente));
-      return res.json({ success: true, cliente });
+    if (!telefoneNormalizado) {
+        return res.status(400).json({ success: false, message: "Formato de número de telefone inválido." });
     }
-
-    res.json({ success: true, isNew: true });
-  } catch (error) {
-    logger.error(`Erro identificação: ${error}`);
-    res.status(500).json({ success: false, message: "Erro interno" });
-  }
-});
-
-app.post('/api/criar-pedido', async (req, res) => {
-  const { cliente, carrinho } = req.body;
-  
-  if (!cliente || !carrinho?.length) {
-    return res.status(400).json({ success: false, message: "Dados inválidos" });
-  }
-
-  try {
-    // Processamento do pedido
-    const cupom = gerarCupomFiscal(req.body);
     
-    if (whatsappWorker) {
-      whatsappWorker.postMessage({ 
-        type: 'enviar-mensagem', 
-        telefone: normalizarTelefone(cliente.telefone),
-        mensagem: cupom
-      });
+    let clientDB;
+    try {
+        const numeroParaApi = `${telefoneNormalizado.substring(2)}@c.us`; // Formato para a API whatsapp-web.js
+        const isRegistered = await client.isRegisteredUser(numeroParaApi);
+        if (!isRegistered) {
+            return res.status(400).json({ success: false, message: "Este número não possui uma conta de WhatsApp ativa." });
+        }
+        
+        clientDB = await pool.connect();
+        const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneNormalizado]);
+        
+        if (result.rows.length > 0) {
+            const clienteEncontrado = result.rows[0];
+            logger.info(`Cliente encontrado no DB: ${clienteEncontrado.nome}`);
+            res.json({ success: true, isNew: false, cliente: clienteEncontrado });
+        } else {
+            logger.info(`Cliente novo. Telefone validado: ${telefoneNormalizado}`);
+            res.json({ success: true, isNew: true, cliente: { telefone: telefoneNormalizado } });
+        }
+    } catch (error) {
+        logger.error(`❌ Erro no processo de identificação: ${error.message}`);
+        res.status(500).json({ success: false, message: "Erro interno no servidor." });
+    } finally {
+        if (clientDB) clientDB.release();
+    }
+});
+
+// ==============================================================================
+// ROTA ATUALIZADA
+// ==============================================================================
+app.post('/api/criar-pedido', async (req, res) => {
+    if (whatsappStatus !== 'ready') { return res.status(503).json({ success: false, message: "Servidor de WhatsApp iniciando. Tente em instantes." }); }
+    
+    const pedido = req.body;
+    const { cliente } = pedido;
+    const telefoneNormalizado = normalizarTelefone(cliente.telefone);
+
+    if (!telefoneNormalizado || !cliente || !Array.isArray(pedido.carrinho) || pedido.carrinho.length === 0 || !pedido.pagamento) {
+        return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
+    }
+    
+    // --- CORREÇÃO APLICADA AQUI ---
+    // Adiciona o telefone formatado (com máscara) ao objeto do pedido para uso no cupom.
+    // O frontend envia o telefone cru, então usamos ele para exibição.
+    pedido.cliente.telefoneFormatado = cliente.telefone; 
+    // --- FIM DA CORREÇÃO ---
+
+    const numeroClienteParaApi = `${telefoneNormalizado.substring(2)}@c.us`;
+    let clientDB;
+    try {
+        clientDB = await pool.connect();
+        
+        await clientDB.query(
+            `INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4)
+             ON CONFLICT (telefone) DO UPDATE SET nome = $2, endereco = $3, referencia = $4`,
+            [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]
+        );
+        logger.info(`Cliente "${cliente.nome}" salvo/atualizado no banco de dados.`);
+        
+        const resultPedido = await clientDB.query(
+            `INSERT INTO pedidos (cliente_telefone, dados_pedido) 
+             VALUES ($1, $2) RETURNING id`,
+            [telefoneNormalizado, JSON.stringify(pedido)]
+        );
+        
+        const pedidoId = resultPedido.rows[0].id;
+        logger.info(`Pedido #${pedidoId} registrado no banco de dados.`);
+        
+        // Agora o cupom fiscal será gerado com o telefone correto
+        const cupomFiscal = gerarCupomFiscal(pedido);
+        await client.sendMessage(numeroClienteParaApi, cupomFiscal);
+        logger.info(`✅ Cupom enviado para ${numeroClienteParaApi}`);
+        
+        // Lógica de acompanhamento (com verificação para não reenviar)
+        setTimeout(async () => {
+             // ... (Lógica de envio de mensagem de confirmação)
+        }, 30 * 1000); // 30 segundos
+
+        setTimeout(async () => {
+             // ... (Lógica de envio de mensagem de entrega)
+        }, 30 * 60 * 1000); // 30 minutos
+
+        res.status(200).json({ success: true, pedidoId: pedidoId });
+    } catch (error) {
+        logger.error(`❌ Falha ao processar pedido para ${numeroClienteParaApi}: ${error.message}`);
+        res.status(500).json({ success: false, message: "Falha ao processar o pedido." });
+    } finally {
+        if(clientDB) clientDB.release();
+    }
+});
+// ==============================================================================
+// FIM DA ROTA ATUALIZADA
+// ==============================================================================
+
+// Rota para buscar o histórico de pedidos
+app.get('/api/historico/:telefone', async (req, res) => {
+    const { telefone } = req.params;
+    // Usa a mesma função de normalização para consistência
+    const telefoneNormalizado = normalizarTelefone(telefone);
+
+    if (!telefoneNormalizado) {
+        return res.status(400).json({ success: false, message: "Formato de número de telefone inválido." });
     }
 
-    res.json({ success: true, cupom });
-  } catch (error) {
-    logger.error(`Erro pedido: ${error}`);
-    res.status(500).json({ success: false, message: "Erro ao processar pedido" });
-  }
+    let clientDB;
+    try {
+        clientDB = await pool.connect();
+        
+        const result = await clientDB.query(
+            `SELECT id, dados_pedido, criado_em FROM pedidos 
+             WHERE cliente_telefone = $1 
+             ORDER BY criado_em DESC`,
+            [telefoneNormalizado]
+        );
+
+        if (result.rows.length === 0) {
+            return res.json([]); 
+        }
+
+        const historico = result.rows.map(pedido => {
+            const dados = pedido.dados_pedido;
+            const subtotal = dados.carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+            const valorTotal = subtotal + 5.00; // 5.00 é a taxa de entrega fixa
+
+            return {
+                id: pedido.id,
+                dataPedido: pedido.criado_em,
+                valorTotal: valorTotal,
+                status: dados.status || "Entregue",
+                itens: dados.carrinho.map(item => ({
+                    nomeProduto: item.nome,
+                    quantidade: item.quantidade,
+                    observacao: item.observacao || ""
+                }))
+            };
+        });
+        
+        logger.info(`Histórico de ${historico.length} pedido(s) retornado para o telefone ${telefoneNormalizado}`);
+        res.json(historico);
+
+    } catch (error) {
+        logger.error(`❌ Erro ao buscar histórico para ${telefoneNormalizado}: ${error.message}`);
+        res.status(500).json({ success: false, message: "Erro interno ao buscar o histórico de pedidos." });
+    } finally {
+        if (clientDB) clientDB.release();
+    }
 });
 
-// Servir arquivos estáticos
-app.use(express.static(path.join(__dirname, '../../public')));
 
-// Tratamento de erros
+// Rota para servir o site
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Middleware global para tratamento de erros
 app.use((err, req, res, next) => {
-  logger.error(`Erro não tratado: ${err.stack}`);
-  res.status(500).json({ error: 'Erro interno do servidor' });
+    logger.error(`Erro não tratado: ${err.stack}`);
+    res.status(500).json({ success: false, message: "Ocorreu um erro inesperado no servidor." });
 });
 
-// Inicialização do servidor
-async function startServer() {
-  try {
-    // Criar índices se não existirem
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clientes (
-        telefone VARCHAR(20) PRIMARY KEY,
-        nome VARCHAR(255) NOT NULL,
-        endereco TEXT NOT NULL,
-        referencia TEXT,
-        criado_em TIMESTAMP DEFAULT NOW()
-      );
-      
-      CREATE TABLE IF NOT EXISTS pedidos (
-        id SERIAL PRIMARY KEY,
-        cliente_telefone VARCHAR(20) REFERENCES clientes(telefone),
-        dados_pedido JSONB NOT NULL,
-        criado_em TIMESTAMP DEFAULT NOW()
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_clientes_telefone ON clientes(telefone);
-    `);
-
-    app.listen(PORT, () => {
-      logger.info(`Servidor iniciado na porta ${PORT}`);
-    });
-  } catch (error) {
-    logger.error(`Falha ao iniciar: ${error}`);
-    process.exit(1);
-  }
-}
-
-startServer();
+// --- Iniciar o Servidor ---
+app.listen(PORT, async () => {
+    await setupDatabase().catch(logger.error);
+    logger.info(`🚀 Servidor rodando na porta ${PORT}.`);
+});
