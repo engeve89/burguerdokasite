@@ -187,10 +187,10 @@ function gerarCupomFiscal(pedido) {
     cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
     if (pagamento === 'Dinheiro' && troco) {
         const valorTroco = parseFloat(troco.replace(',', '.')) - total;
-        cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace(',',',')})\n`;
+        cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace('.',',')})\n`;
     }
     cupom += `==================================================\n`;
-    cupom += `          OBRIGADO PELA PREFERENCIA!`;
+    cupom += `          OBRIGADO PELA PREFERÊNCIA!`;
     return cupom;
 }
 
@@ -262,6 +262,8 @@ app.post('/api/identificar-cliente', async (req, res) => {
     
     let clientDB;
     try {
+        clientDB = await pool.connect();
+        
         const numeroParaApi = `${telefoneNormalizado}@c.us`;
         const isRegistered = await client.isRegisteredUser(numeroParaApi);
         if (!isRegistered) {
@@ -420,19 +422,29 @@ app.get('/api/historico/:telefone', async (req, res) => {
     const telefoneNormalizado = normalizarTelefone(telefone);
 
     if (!telefoneNormalizado) {
-        return res.status(400).json({ success: false, message: "Formato de número de telefone inválido." });
+        return res.status(400).json({ 
+            success: false, 
+            message: "Formato de número de telefone inválido." 
+        });
     }
 
     let clientDB;
     try {
         clientDB = await pool.connect();
         
+        // Adiciona um log para verificar o formato das datas no banco de dados
         const result = await clientDB.query(
             `SELECT id, dados_pedido, criado_em FROM pedidos
             WHERE cliente_telefone = $1
             ORDER BY criado_em DESC`,
             [telefoneNormalizado]
         );
+
+        // Log para verificar as datas retorn do banco
+        logger.info('Dados retornados do banco:');
+        result.rows.forEach(row => {
+            logger.info(`ID: ${row.id}, Data: ${row.criado_em}`);
+        });
 
         if (result.rows.length === 0) {
             return res.json([]); 
@@ -441,26 +453,34 @@ app.get('/api/historico/:telefone', async (req, res) => {
         const historico = result.rows.map(pedido => {
             const dados = pedido.dados_pedido;
             const subtotal = dados.carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
-            const valorTotal = subtotal + 5.00;
+            const taxaEntrega = 5.00;
+            const total = subtotal + taxaEntrega;
             
-            // Correção na manipulação da data
-            // Certifique-se de que criado_em é uma string antes de criar o objeto Date
-            let dataPedido = pedido.criado_em;
+            // Adiciona um log para verificar o formato das datas antes de processar
+            logger.info(`Data antes do processamento: ${pedido.criado_em}`);
             
-            // Se for um objeto Date, converta para string ISO
-            if (dataPedido instanceof Date) {
-                dataPedido = dataPedido.toISOString();
-            }
-            
-            // Crie um novo objeto Date com a string ISO
-            const dateObj = new Date(dataPedido);
-            
-            // Verifique se a data é válida
-            if (isNaN(dateObj.getTime())) {
-                // Se a data for inválida, use uma data padrão ou lance um erro
-                console.error("Data inválida encontrada:", dataPedido);
-                // Você pode usar uma data padrão ou omitir o campo
-                const dataFormatada = "Data não disponível";
+            // Converte a data do PostgreSQL para objeto Date do JavaScript
+            let dataPedido;
+            try {
+                // O PostgreSQL retorna a data como string no formato 'YYYY-MM-DD HH:MM:SS.mmmmmm+HH:MM'
+                // Vamos pegar apenas a parte até os milissegundos
+                const dataStr = pedido.criado_em.toString();
+                const dataPartes = dataStr.split('.');
+                const dataParaConverter = dataPartes[0]; // Pegamos apenas a parte antes dos milissegundos
+                
+                dataPedido = new Date(dataParaConverter);
+                
+                // Verifica se a data é válida
+                if (isNaN(dataPedido.getTime())) {
+                    throw new Error('Data inválida');
+                }
+                
+                // Ajusta a data para horário de Brasília (UTC-3)
+                const brasiliaTime = new Date(dataPedido.getTime() - (3 * 60 * 60 * 1000));
+                const dataFormatada = brasiliaTime.toLocaleString('pt-BR');
+                
+                logger.info(`Data após processamento: ${dataFormatada}`);
+                
                 return {
                     id: pedido.id,
                     dataPedido: dataFormatada,
@@ -472,23 +492,21 @@ app.get('/api/historico/:telefone', async (req, res) => {
                         observacao: item.observacao || ""
                     }))
                 };
+            } catch (error) {
+                // Se houver um erro ao converter a data, use uma data padrão
+                logger.error(`Erro ao converter data: ${error.message}`);
+                return {
+                    id: pedido.id,
+                    dataPedido: "Data não disponível",
+                    valorTotal: valorTotal,
+                    status: dados.status || "Entregue",
+                    itens: dados.carrinho.map(item => ({
+                        nomeProduto: item.nome,
+                        quantidade: item.quantidade,
+                        observacao: item.observacao || ""
+                    }))
+                };
             }
-            
-            // Ajusta a data para horário de Brasília (UTC-3)
-            const brasiliaTime = new Date(dateObj.getTime() - (3 * 60 * 60 * 1000));
-            const dataFormatada = brasiliaTime.toLocaleString('pt-BR');
-
-            return {
-                id: pedido.id,
-                dataPedido: dataFormatada,
-                valorTotal: valorTotal,
-                status: dados.status || "Entregue",
-                itens: dados.carrinho.map(item => ({
-                    nomeProduto: item.nome,
-                    quantidade: item.quantidade,
-                    observacao: item.observacao || ""
-                }))
-            };
         });
         
         logger.info(`Histórico de ${historico.length} pedido(s) retornado para o telefone ${telefoneNormalizado}`);
