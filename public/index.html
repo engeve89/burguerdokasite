@@ -326,8 +326,8 @@
                         <div style="display: flex; align-items: center;">
                             <span style="margin-right: 5px; font-weight: bold;">R$</span>
                             <input type="number" id="troco-input" class="form-group" 
-                                   placeholder="Ex: 50,00" step="0.01" min="0"
-                                   style="flex-grow: 1; margin-bottom: 0;">
+                                       placeholder="Ex: 50,00" step="0.01" min="0"
+                                       style="flex-grow: 1; margin-bottom: 0;">
                         </div>
                         <small style="color: #666; display: block; margin-top: 5px;">
                             Deixe em branco se não precisar de troco
@@ -444,7 +444,7 @@
         let carrinho = [];
         let clienteAtual = null;
         let metodoPagamentoSelecionado = null;
-        let contextoLogin = 'pedido'; // <-- ALTERAÇÃO 1: Variável de contexto adicionada
+        let contextoLogin = 'pedido'; // Variável de contexto adicionada
 
         // Função de throttling para otimizar eventos
         function throttle(func, limit) {
@@ -520,9 +520,9 @@
                 let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
                 if (produto.preco_antigo) {
                     precoHtml = `<div class="produto-preco-container">
-                                            <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
-                                            <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
-                                         </div>`;
+                                        <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                        <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                      </div>`;
                 }
 
                 card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
@@ -653,9 +653,9 @@
                 }
                 
                 clienteAtual = data.cliente;
-                clienteAtual.telefone = telefoneCru;
+                clienteAtual.telefone = telefoneCru; // Guarda o telefone no formato original com DD
 
-                // <-- ALTERAÇÃO 3: Lógica de contexto aplicada
+                // Lógica de contexto aplicada
                 if (contextoLogin === 'historico') {
                     fecharModalLogin();
                     abrirModalHistorico();
@@ -740,7 +740,8 @@
                 }
 
                 const numeroPedido = data.pedidoId;
-                const codigoEntrega = clienteAtual.telefone.slice(-4);
+                // Usa os últimos 4 dígitos do telefone limpo como código de entrega
+                const codigoEntrega = clienteAtual.telefone.replace(/\D/g, '').slice(-4); 
 
                 document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
                 document.getElementById('numero-pedido').textContent = `#${numeroPedido}`;
@@ -874,7 +875,9 @@
         function abrirModalHistorico() {
             modalHistorico.style.display = 'flex';
             if (clienteAtual && clienteAtual.telefone) {
-                carregarHistorico(clienteAtual.telefone);
+                // Remove qualquer caractere não numérico antes de passar para a função
+                const telefoneLimpo = clienteAtual.telefone.replace(/\D/g, ''); 
+                carregarHistorico(telefoneLimpo);
                 btnBuscarHistorico.style.display = 'none';
             } else {
                 historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
@@ -903,11 +906,21 @@
 
                 historicoContainer.innerHTML = '';
                 pedidos.forEach(pedido => {
-                    const dataFormatada = new Date(pedido.dataPedido).toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+                    let dataFormatada = 'Data Indisponível'; // Mensagem padrão se a data for inválida
+                    try {
+                        const dateObject = new Date(pedido.dataPedido);
+                        if (!isNaN(dateObject.getTime())) { // Verifica se a data é válida
+                            dataFormatada = dateObject.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                        } else {
+                            console.warn("Data do pedido inválida:", pedido.dataPedido);
+                        }
+                    } catch (e) {
+                        console.error("Erro ao formatar data do pedido:", pedido.dataPedido, e);
+                    }
                     
                     let itensHtml = '';
                     pedido.itens.forEach(item => {
-                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
+                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto || item.nome} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
                     });
 
                     const pedidoCard = document.createElement('div');
@@ -937,7 +950,7 @@
             
             const trocoInput = document.getElementById('troco-input');
             trocoInput.addEventListener('input', throttle(function() {
-                const trocoValue = parseFloat(this.value);
+                const trocoValue = parseFloat(this.value.replace(',', '.')); // Garante que a vírgula é tratada como ponto
                 const valorPedido = calcularTotalPedido();
                 const trocoCalculado = document.getElementById('troco-calculado');
                 
@@ -1030,13 +1043,19 @@
                 document.getElementById('input-referencia').value = clienteAtual.referencia || '';
             });
 
-            btnMeusPedidos.addEventListener('click', abrirModalHistorico);
+            btnMeusPedidos.addEventListener('click', () => {
+                contextoLogin = 'historico'; // Define o contexto para histórico
+                abrirModalLogin(); // Abre o modal de login para pegar o telefone do cliente
+            });
             
-            // <-- ALTERAÇÃO 2: Lógica do botão de busca atualizada
+            // Lógica do botão de busca atualizada
             btnBuscarHistorico.addEventListener('click', () => {
-                contextoLogin = 'historico'; // Define o contexto
-                fecharModalHistorico();
-                abrirModalLogin(); 
+                // A função verificarTelefone já lida com o contexto
+                // Ao clicar em 'Buscar com meu WhatsApp', o fluxo vai para verificarTelefone que,
+                // se o contexto for 'historico', chamará abrirModalHistorico novamente.
+                const telefoneInput = document.getElementById('input-telefone');
+                // Assume que o input-telefone já está preenchido pelo modal de login
+                verificarTelefone(); 
             });
 
             document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico);
