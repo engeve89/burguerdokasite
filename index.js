@@ -13,20 +13,22 @@ const helmet = require('helmet');
 function getBrasiliaTime() {
     const now = new Date();
     // Ajusta para UTC-3 (Brasília)
+    // ATENÇÃO: Esta função ajusta o objeto Date para UTC-3.
+    // Para logs, funciona. Para dados do DB, veja a correção na rota /api/historico/:telefone.
     now.setHours(now.getHours() - 3);
     return now;
 }
 
 // Configuração de logs com horário de Brasília
 const logger = {
-  info: (msg) => {
-      const now = getBrasiliaTime();
-      console.log(`[INFO] ${now.toISOString()} - ${msg}`);
-  },
-  error: (msg) => {
-      const now = getBrasiliaTime();
-      console.error(`[ERROR] ${now.toISOString()} - ${msg}`);
-  }
+    info: (msg) => {
+        const now = getBrasiliaTime();
+        console.log(`[INFO] ${now.toISOString()} - ${msg}`);
+    },
+    error: (msg) => {
+        const now = getBrasiliaTime();
+        console.error(`[ERROR] ${now.toISOString()} - ${msg}`);
+    }
 };
 
 // Configuração do Express
@@ -38,32 +40,32 @@ app.set('trust proxy', 1);
 
 // --- Middlewares de Segurança e Funcionalidade ---
 app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],  
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
-      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: [],
-    },
-  })
+    helmet.contentSecurityPolicy({
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
+            fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+            connectSrc: ["'self'"],
+            frameSrc: ["'none'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    })
 );
 
-app.disable('x-powered-by');  
+app.disable('x-powered-by');
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Configuração do Rate Limiter
 const apiLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutos
-	max: 100,
-	standardHeaders: true,
-	legacyHeaders: false,
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
     message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
 });
 
@@ -71,11 +73,11 @@ app.use('/api/', apiLimiter);
 
 // --- Conexão com o Banco de Dados PostgreSQL ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectionTimeoutMillis: 5000
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    },
+    connectionTimeoutMillis: 5000
 });
 
 // --- Função para criar as tabelas se não existirem ---
@@ -83,7 +85,7 @@ async function setupDatabase() {
     let clientDB;
     try {
         clientDB = await pool.connect();
-        
+
         // Tabela de clientes
         await clientDB.query(`
             CREATE TABLE IF NOT EXISTS clientes (
@@ -94,7 +96,7 @@ async function setupDatabase() {
                 criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        
+
         // Tabela de pedidos
         await clientDB.query(`
             CREATE TABLE IF NOT EXISTS pedidos (
@@ -106,7 +108,7 @@ async function setupDatabase() {
                 criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        
+
         logger.info('Tabelas verificadas/criadas com sucesso no banco de dados.');
     } catch (err) {
         logger.error(`Erro ao criar as tabelas: ${err}`);
@@ -119,39 +121,39 @@ async function setupDatabase() {
 let whatsappStatus = 'initializing';
 
 const client = new Client({
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    headless: true
-  },
-  session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: true
+    },
+    session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
 });
 
 // --- Função de Normalização de Telefone Atualizada ---
 function normalizarTelefone(telefone) {
-  if (typeof telefone !== 'string') return null;
-  
-  // Remove tudo que não for dígito
-  let limpo = telefone.replace(/\D/g, '');
-  
-  // Remove todos os prefixos '0' e '55' iniciais
-  limpo = limpo.replace(/^(0+|55+)/, '');
-  
-  // Verifica comprimento após limpeza
-  if (limpo.length === 10 || limpo.length === 11) {
-    // Números com 10 dígitos: DDD (2) + número (8)
-    // Números com 11 dígitos: DDD (2) + número (9)
-    const ddd = limpo.substring(0, 2);
-    const numero = limpo.substring(2);
-    
-    // Remove o nono dígito se necessário
-    const numeroFinal = (numero.length === 9 && numero.startsWith('9'))
-      ? numero.substring(1)  // Remove o primeiro '9'
-      : numero;
-    
-    return `55${ddd}${numeroFinal}`;
-  }
-  
-  return null;
+    if (typeof telefone !== 'string') return null;
+
+    // Remove tudo que não for dígito
+    let limpo = telefone.replace(/\D/g, '');
+
+    // Remove todos os prefixos '0' e '55' iniciais
+    limpo = limpo.replace(/^(0+|55+)/, '');
+
+    // Verifica comprimento após limpeza
+    if (limpo.length === 10 || limpo.length === 11) {
+        // Números com 10 dígitos: DDD (2) + número (8)
+        // Números com 11 dígitos: DDD (2) + número (9)
+        const ddd = limpo.substring(0, 2);
+        const numero = limpo.substring(2);
+
+        // Remove o nono dígito se necessário
+        const numeroFinal = (numero.length === 9 && numero.startsWith('9'))
+            ? numero.substring(1)  // Remove o primeiro '9'
+            : numero;
+
+        return `55${ddd}${numeroFinal}`;
+    }
+
+    return null;
 }
 
 function gerarCupomFiscal(pedido) {
@@ -160,13 +162,13 @@ function gerarCupomFiscal(pedido) {
     const taxaEntrega = 5.00;
     const total = subtotal + taxaEntrega;
     const now = getBrasiliaTime();
-    
+
     // Formata a data manualmente
     const dataFormatada = now.toLocaleDateString('pt-BR');
     const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    
+
     let cupom = `==================================================\n`;
-    cupom += `     Doka Burger - Pedido em ${dataFormatada} às ${horaFormatada}\n`;
+    cupom += `       Doka Burger - Pedido em ${dataFormatada} às ${horaFormatada}\n`;
     cupom += `==================================================\n`
     cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
     cupom += `*ITENS:*\n`;
@@ -177,7 +179,7 @@ function gerarCupomFiscal(pedido) {
         if (item.observacao) { cupom += `  Obs: ${item.observacao}\n`; }
     });
     cupom += `--------------------------------------------------\n`;
-    cupom += `Subtotal:           R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    cupom += `Subtotal:          R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
     cupom += `Taxa de Entrega:    R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
     cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
     cupom += `--------------------------------------------------\n`;
@@ -190,7 +192,7 @@ function gerarCupomFiscal(pedido) {
         cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace('.',',')})\n`;
     }
     cupom += `==================================================\n`;
-    cupom += `           OBRIGADO PELA PREFERENCIA!`;
+    cupom += `            OBRIGADO PELA PREFERENCIA!`;
     return cupom;
 }
 
@@ -213,22 +215,22 @@ client.on('auth_failure', msg => {
     whatsappStatus = 'disconnected';
 });
 
-client.on('ready', () => { 
+client.on('ready', () => {
     whatsappStatus = 'ready';
     logger.info('✅ 🤖 Cliente WhatsApp conectado e pronto para automação!');
 });
 
-client.on('disconnected', (reason) => { 
-    whatsappStatus = 'disconnected'; 
-    logger.error(`WhatsApp desconectado: ${reason}`); 
+client.on('disconnected', (reason) => {
+    whatsappStatus = 'disconnected';
+    logger.error(`WhatsApp desconectado: ${reason}`);
 });
 
 client.initialize().catch(err => {
-  logger.error(`Falha crítica ao inicializar o cliente: ${err}`);
-  if (fs.existsSync('./session.json')) {
-    logger.info('Tentando remover arquivo de sessão corrompido...');
-    fs.unlinkSync('./session.json');
-  }
+    logger.error(`Falha crítica ao inicializar o cliente: ${err}`);
+    if (fs.existsSync('./session.json')) {
+        logger.info('Tentando remover arquivo de sessão corrompido...');
+        fs.unlinkSync('./session.json');
+    }
 });
 
 // --- Rotas da API ---
@@ -246,12 +248,12 @@ app.post('/api/identificar-cliente', async (req, res) => {
     const telefoneNormalizado = normalizarTelefone(telefone);
 
     if (!telefoneNormalizado) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Formato de número de telefone inválido. Use DDD + número (10 ou 11 dígitos)" 
+        return res.status(400).json({
+            success: false,
+            message: "Formato de número de telefone inválido. Use DDD + número (10 ou 11 dígitos)"
         });
     }
-    
+
     // Verificação adicional de comprimento
     if (telefoneNormalizado.length !== 12) {
         return res.status(400).json({
@@ -259,21 +261,21 @@ app.post('/api/identificar-cliente', async (req, res) => {
             message: "Número inválido após normalização. Por favor, verifique o formato."
         });
     }
-    
+
     let clientDB;
     try {
         const numeroParaApi = `${telefoneNormalizado}@c.us`;
         const isRegistered = await client.isRegisteredUser(numeroParaApi);
         if (!isRegistered) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Este número não possui uma conta de WhatsApp ativa." 
+            return res.status(400).json({
+                success: false,
+                message: "Este número não possui uma conta de WhatsApp ativa."
             });
         }
-        
+
         clientDB = await pool.connect();
         const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneNormalizado]);
-        
+
         if (result.rows.length > 0) {
             const clienteEncontrado = result.rows[0];
             logger.info(`Cliente encontrado no DB: ${clienteEncontrado.nome}`);
@@ -291,13 +293,13 @@ app.post('/api/identificar-cliente', async (req, res) => {
 });
 
 app.post('/api/criar-pedido', async (req, res) => {
-    if (whatsappStatus !== 'ready') { 
-        return res.status(503).json({ 
-            success: false, 
-            message: "Servidor de WhatsApp iniciando. Tente em instantes." 
-        }); 
+    if (whatsappStatus !== 'ready') {
+        return res.status(503).json({
+            success: false,
+            message: "Servidor de WhatsApp iniciando. Tente em instantes."
+        });
     }
-    
+
     const pedido = req.body;
     const { cliente } = pedido;
     const telefoneNormalizado = normalizarTelefone(cliente.telefone);
@@ -305,7 +307,7 @@ app.post('/api/criar-pedido', async (req, res) => {
     if (!telefoneNormalizado || !cliente || !Array.isArray(pedido.carrinho) || pedido.carrinho.length === 0 || !pedido.pagamento) {
         return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
     }
-    
+
     // Verificação adicional de comprimento
     if (telefoneNormalizado.length !== 12) {
         return res.status(400).json({
@@ -313,34 +315,34 @@ app.post('/api/criar-pedido', async (req, res) => {
             message: "Número de telefone inválido após normalização. Por favor, verifique o formato."
         });
     }
-    
+
     pedido.cliente.telefoneFormatado = cliente.telefone;
 
     const numeroClienteParaApi = `${telefoneNormalizado}@c.us`;
     let clientDB;
     try {
         clientDB = await pool.connect();
-        
+
         await clientDB.query(
             `INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4)
              ON CONFLICT (telefone) DO UPDATE SET nome = $2, endereco = $3, referencia = $4`,
             [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]
         );
         logger.info(`Cliente "${cliente.nome}" salvo/atualizado no banco de dados.`);
-        
+
         const resultPedido = await clientDB.query(
-            `INSERT INTO pedidos (cliente_telefone, dados_pedido) 
+            `INSERT INTO pedidos (cliente_telefone, dados_pedido)
              VALUES ($1, $2) RETURNING id`,
             [telefoneNormalizado, JSON.stringify(pedido)]
         );
-        
+
         const pedidoId = resultPedido.rows[0].id;
         logger.info(`Pedido #${pedidoId} registrado no banco de dados.`);
-        
+
         const cupomFiscal = gerarCupomFiscal(pedido);
         await client.sendMessage(numeroClienteParaApi, cupomFiscal);
         logger.info(`✅ Cupom enviado para ${numeroClienteParaApi}`);
-        
+
         // Lógica de acompanhamento (com verificação para não reenviar)
         setTimeout(async () => {
             let clientDBInternal = null;
@@ -350,11 +352,11 @@ app.post('/api/criar-pedido', async (req, res) => {
                     'SELECT mensagem_confirmacao_enviada FROM pedidos WHERE id = $1',
                     [pedidoId]
                 );
-                
+
                 if (result.rows.length > 0 && !result.rows[0].mensagem_confirmacao_enviada) {
                     const msgConfirmacao = `✅ *Doka Burger* - Seu pedido #${pedidoId} foi confirmado e já está indo para chapa! 🍔⏳\n\nTempo de Entrega 35 a 40 min!`;
                     await client.sendMessage(numeroClienteParaApi, msgConfirmacao);
-                    
+
                     await clientDBInternal.query(
                         'UPDATE pedidos SET mensagem_confirmacao_enviada = true WHERE id = $1',
                         [pedidoId]
@@ -382,11 +384,11 @@ app.post('/api/criar-pedido', async (req, res) => {
                     'SELECT mensagem_entrega_enviada FROM pedidos WHERE id = $1',
                     [pedidoId]
                 );
-                
+
                 if (result.rows.length > 0 && !result.rows[0].mensagem_entrega_enviada) {
                     const msgEntrega = `🚚 *Doka Burger* - Seu pedido #${pedidoId} saiu para entrega! Deve chegar em instantes!\n\n entre 10 a 15 min se já chegou desconsidere a mensagem.`;
                     await client.sendMessage(numeroClienteParaApi, msgEntrega);
-                    
+
                     await clientDBInternal.query(
                         'UPDATE pedidos SET mensagem_entrega_enviada = true WHERE id = $1',
                         [pedidoId]
@@ -426,27 +428,44 @@ app.get('/api/historico/:telefone', async (req, res) => {
     let clientDB;
     try {
         clientDB = await pool.connect();
-        
+
         const result = await clientDB.query(
-            `SELECT id, dados_pedido, criado_em FROM pedidos 
-             WHERE cliente_telefone = $1 
+            `SELECT id, dados_pedido, criado_em FROM pedidos
+             WHERE cliente_telefone = $1
              ORDER BY criado_em DESC`,
             [telefoneNormalizado]
         );
 
         if (result.rows.length === 0) {
-            return res.json([]); 
+            return res.json([]);
         }
 
         const historico = result.rows.map(pedido => {
             const dados = pedido.dados_pedido;
             const subtotal = dados.carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
             const valorTotal = subtotal + 5.00;
-            
-            // Ajusta a data para horário de Brasília
+
             const dataPedido = new Date(pedido.criado_em);
-            dataPedido.setHours(dataPedido.getHours() - 3);
-            const dataFormatada = dataPedido.toLocaleString('pt-BR');
+
+            // Verifica se a data é válida
+            if (isNaN(dataPedido.getTime())) {
+                logger.error(`❌ Data inválida encontrada no histórico para pedido ID: ${pedido.id} - Valor original de 'criado_em': ${pedido.criado_em}`);
+                return {
+                    id: pedido.id,
+                    dataPedido: "Data Inválida", // Retorna uma string indicando o erro para o frontend
+                    valorTotal: valorTotal,
+                    status: dados.status || "Entregue",
+                    itens: dados.carrinho.map(item => ({
+                        nomeProduto: item.nome,
+                        quantidade: item.quantidade,
+                        observacao: item.observacao || ""
+                    }))
+                };
+            }
+
+            // Formata a data para pt-BR e define o fuso horário para 'America/Sao_Paulo' (horário de Brasília).
+            // Isso garante a conversão correta do UTC (vindo do banco) para o fuso horário local desejado.
+            const dataFormatada = dataPedido.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
             return {
                 id: pedido.id,
@@ -460,7 +479,7 @@ app.get('/api/historico/:telefone', async (req, res) => {
                 }))
             };
         });
-        
+
         logger.info(`Histórico de ${historico.length} pedido(s) retornado para o telefone ${telefoneNormalizado}`);
         res.json(historico);
 
@@ -474,7 +493,7 @@ app.get('/api/historico/:telefone', async (req, res) => {
 
 // Rota para servir o site
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Middleware global para tratamento de erros
